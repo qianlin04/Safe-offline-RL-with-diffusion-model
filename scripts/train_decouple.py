@@ -12,7 +12,7 @@ class Parser(utils.Parser):
 args = Parser().parse_args('diffusion')
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
 #-----------------------------------------------------------------------------#
 #---------------------------------- dataset ----------------------------------#
@@ -27,6 +27,7 @@ dataset_config = utils.Config(
     preprocess_fns=args.preprocess_fns,
     use_padding=args.use_padding,
     max_path_length=args.max_path_length,
+    max_n_episodes=30000 if 'mycliffwalking' in args.dataset else 10000
 )
 
 render_config = utils.Config(

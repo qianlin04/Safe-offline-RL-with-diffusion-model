@@ -7,7 +7,7 @@ from gym.utils import seeding
 import torch
 
 class TwoStepMDP(gym.Env):
-    def __init__(self,):
+    def __init__(self, onehot=True):
         self.state = np.array([1, 0, 0, 0])
         self.rewards = np.array([0, 0, 2, -3])
         self.action_space = spaces.Discrete(2)

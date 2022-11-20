@@ -1,4 +1,5 @@
 import gym
+import copy
 
 ENVIRONMENT_SPECS = (
     {
@@ -17,9 +18,35 @@ ENVIRONMENT_SPECS = (
         'id': 'AntFullObs-v2',
         'entry_point': ('diffuser.environments.ant:AntFullObsEnv'),
     },
+    
+)
+
+TOY_ENVIRONMENT_SPECS = (
     {
         'id': 'TwoStepMDP-v0',
         'entry_point': ('diffuser.environments.two_step_mdp:TwoStepMDP'),
+        'max_episode_steps' :200,
+        'kwargs': {},
+    },
+    {
+        'id': 'mycliffwalking-v0',
+        'entry_point': ('diffuser.environments.mycliffwalking:CliffWalkingEnv'),
+        'kwargs': {},
+        'max_episode_steps':200,
+    },
+    {
+        'id' : 'myFrozenLake-v0',
+        'entry_point': ('diffuser.environments.myfrozen_lake:FrozenLakeEnv'),
+        'kwargs':{'map_name' : '4x4'},
+        'max_episode_steps' :100,
+        'reward_threshold': 0.78,
+    },
+    {
+        'id' : 'myFrozenLake8x8-v0',
+        'entry_point': ('diffuser.environments.myfrozen_lake:FrozenLakeEnv'),
+        'kwargs':{'map_name' : '8x8'},
+        'max_episode_steps' :200,
+        'reward_threshold': 0.99,
     },
 )
 
@@ -31,6 +58,19 @@ def register_environments():
         gym_ids = tuple(
             environment_spec['id']
             for environment_spec in  ENVIRONMENT_SPECS)
+
+        gym_ids = gym_ids + tuple(
+            environment_spec['id']
+            for environment_spec in  TOY_ENVIRONMENT_SPECS)
+
+        for environment in TOY_ENVIRONMENT_SPECS:
+            gym.register(**environment)
+            env_id, ver_id = environment['id'].split('-')
+            for datatype in ['random', 'medium-replay', 'medium', 'mix']:
+                env = copy.deepcopy(environment)
+                env['id'] = '-'.join([env_id, datatype, ver_id])
+                env['kwargs']['datatype'] = datatype
+                gym.register(**env)
 
         return gym_ids
     except:

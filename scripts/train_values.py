@@ -13,7 +13,7 @@ class Parser(utils.Parser):
 args = Parser().parse_args('values')
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 #-----------------------------------------------------------------------------#
 #---------------------------------- dataset ----------------------------------#
@@ -32,6 +32,7 @@ dataset_config = utils.Config(
     discount=args.discount,
     termination_penalty=args.termination_penalty,
     normed=args.normed,
+    max_n_episodes=30000 if 'mycliffwalking' in args.dataset else 10000
 )
 
 render_config = utils.Config(

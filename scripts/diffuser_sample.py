@@ -10,8 +10,8 @@ import diffuser.utils as utils
 #-----------------------------------------------------------------------------#
 
 class Parser(utils.Parser):
-    dataset: str = 'walker2d-medium-replay-v2'
-    config: str = 'config.locomotion'
+    dataset: str = "TwoStepMDP-v0"
+    config: str = 'two_step_mdp_experiment.config'
 
 args = Parser().parse_args('plan')
 
@@ -28,23 +28,10 @@ diffusion_experiment = load_diffusion_func(
     args.loadbase, args.dataset, args.diffusion_loadpath,
     epoch=args.diffusion_epoch, seed=args.seed,
 )
-load_diffusion_func = utils.load_diffusion if not "decouple" in args.value_loadpath else utils.load_decouple_diffusion
-value_experiment = load_diffusion_func(
-    args.loadbase, args.dataset, args.value_loadpath,
-    epoch=args.value_epoch, seed=args.seed,
-)
-
-## ensure that the diffusion model and value function are compatible with each other
-utils.check_compatibility(diffusion_experiment, value_experiment)
 
 diffusion = diffusion_experiment.ema
 dataset = diffusion_experiment.dataset
 renderer = diffusion_experiment.renderer
-
-## initialize value guide
-value_function = value_experiment.ema
-guide_config = utils.Config(args.guide, model=value_function, verbose=False)
-guide = guide_config()
 
 logger_config = utils.Config(
     utils.Logger,
@@ -57,18 +44,10 @@ logger_config = utils.Config(
 ## policies are wrappers around an unconditional diffusion model and a value guide
 policy_config = utils.Config(
     args.policy,
-    guide=guide,
-    scale=args.scale,
+    guide=None,
     diffusion_model=diffusion,
     normalizer=dataset.normalizer,
     preprocess_fns=args.preprocess_fns,
-    ## sampling kwargs
-    sample_fn=sampling.n_step_guided_p_sample if not "decouple" in args.config else sampling.n_step_guided_p_sample_decouple,
-    n_guide_steps=args.n_guide_steps,
-    t_stopgrad=args.t_stopgrad,
-    scale_grad_by_std=args.scale_grad_by_std,
-    state_grad_mask=args.state_grad_mask,
-    verbose=False,
 )
 
 logger = logger_config()
@@ -91,22 +70,25 @@ for _ in range(5):
     total_reward = 0
 
     for t in range(args.max_episode_length):
-
-        if t % 10 == 0: print(args.savepath, flush=True)
-
-        ## save state for rendering only
-        # state = env.state_vector().copy()
-
+        
         ## format current observation for conditioning
         conditions = {0: observation}
         action, samples = policy(conditions, batch_size=args.batch_size, verbose=args.verbose)
+
+        env.render()
+        import numpy as np
+        for i in range(len(samples.observations[0])):
+            x = samples.observations[0][i]
+            print("state:  ", np.unravel_index(np.argmax(x), env.shape), np.max(x))
+            print("action:  ", np.argmax(samples.actions[0][i]))
+        assert 0
 
         ## execute action in environment
         next_observation, reward, terminal, _ = env.step(action)
 
         ## print reward and score
         total_reward += reward
-        score = env.get_normalized_score(total_reward)
+        score = 0
         print(
             f't: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | '
             f'values: {samples.values[0]} | scale: {args.scale}',
@@ -115,9 +97,6 @@ for _ in range(5):
 
         ## update rollout observations
         rollout.append(next_observation.copy())
-
-        ## render every `args.vis_freq` steps
-        # logger.log(t, samples, state, rollout)
 
         if terminal:
             break

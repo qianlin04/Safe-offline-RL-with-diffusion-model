@@ -2,6 +2,7 @@ bin/
 logs/
 wandb/
 logs_backup/
+dataset/
 
 *.sif
 

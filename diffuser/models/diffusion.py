@@ -270,7 +270,7 @@ class ValueDiffusion(GaussianDiffusion):
 class PolicyDynamicDiffusion(nn.Module):
     def __init__(self, policy_model, dynamic_model, horizon, observation_dim, action_dim, n_timesteps=1000,
         loss_type='l1', clip_denoised=False, predict_epsilon=True,
-        action_weight=1.0, loss_discount=1.0, loss_weights=None,
+        action_weight=1.0, loss_discount=1.0, loss_weights=None, sync_generate=False
     ):
         super().__init__()
         self.horizon = horizon
@@ -317,7 +317,7 @@ class PolicyDynamicDiffusion(nn.Module):
         loss_weights = self.get_loss_weights(action_weight, loss_discount, loss_weights)
         self.loss_fn = Losses[loss_type](loss_weights, self.action_dim)
 
-        self.sync_generate = False
+        self.sync_generate = sync_generate
 
     def get_loss_weights(self, action_weight, discount, weights_dict):
         '''
