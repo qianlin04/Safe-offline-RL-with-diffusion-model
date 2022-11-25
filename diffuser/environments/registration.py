@@ -35,6 +35,12 @@ TOY_ENVIRONMENT_SPECS = (
         'max_episode_steps':200,
     },
     {
+        'id': 'myroulette-v0',
+        'entry_point': ('diffuser.environments.myroulette:RouletteEnv'),
+        'kwargs': {},
+        'max_episode_steps':100,
+    },
+    {
         'id' : 'myFrozenLake-v0',
         'entry_point': ('diffuser.environments.myfrozen_lake:FrozenLakeEnv'),
         'kwargs':{'map_name' : '4x4'},

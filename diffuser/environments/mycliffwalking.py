@@ -94,8 +94,8 @@ class CliffWalkingEnv(discrete.DiscreteEnv):
 
     def step(self, a):
         if type(a) is np.ndarray:
-            a = np.where(a!=0)[0]
-        if np.random.uniform(0, 1)<self.epsilon:
+            a = np.argmax(a)
+        if np.unravel_index(self.s, self.shape)[1]<6 and np.random.uniform(0, 1)<self.epsilon:
             a = DOWN #np.random.choice([UP, RIGHT, DOWN, LEFT])
         s, r, d, info = super(CliffWalkingEnv, self).step(a)
         if self.onehot:

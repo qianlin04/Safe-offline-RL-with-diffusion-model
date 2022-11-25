@@ -16,7 +16,7 @@ class Parser(utils.Parser):
 args = Parser().parse_args('plan')
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
 #-----------------------------------------------------------------------------#
 #---------------------------------- loading ----------------------------------#

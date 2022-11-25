@@ -16,6 +16,7 @@ class Parser(utils.Parser):
     dataset: str = 'walker2d-medium-replay-v2'
     config: str = 'config.locomotion'
     cost_threshold: float = 1e6
+    n_test_episode: int = 5
 
 args = Parser().parse_args('plan')
 
@@ -113,7 +114,7 @@ all_results = []
 all_scores = []
 all_total_cost = [] 
 
-for _ in range(5):
+for _ in range(args.n_test_episode):
 
     env = dataset.env
     observation = env.reset()

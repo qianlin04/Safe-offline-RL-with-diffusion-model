@@ -3,7 +3,7 @@ import pdb
 from cost import action_cost, qvel_cost, vel_cost, healthy_cost
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
 #-----------------------------------------------------------------------------#
 #----------------------------------- setup -----------------------------------#

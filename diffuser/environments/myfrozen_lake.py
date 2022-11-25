@@ -97,7 +97,8 @@ class FrozenLakeEnv(discrete.DiscreteEnv):
 
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, desc=None, map_name="4x4", is_slippery=True, onehot=True):
+    def __init__(self, desc=None, map_name="4x4", is_slippery=True, onehot=True, datatype=''):
+        self.datatype = datatype
         if desc is None and map_name is None:
             desc = generate_random_map()
         elif desc is None:
@@ -180,12 +181,12 @@ class FrozenLakeEnv(discrete.DiscreteEnv):
     def get_dataset(self, dataset=None):
         import torch
         if dataset is None:
-            dataset = './dataset/FrozenLake_random-v0_dataset.pkl' if self.nrow == 4 else 'FrozenLake8x8_random-v0_dataset.pkl'
+            dataset = f'./dataset/myFrozenLake-v0_{self.datatype}.pkl' if self.nrow == 4 else f'./dataset/myFrozenLake8x8-v0_{self.datatype}.pkl' 
         return torch.load(dataset)
 
     def step(self, a):
         if type(a) is np.ndarray:
-            a = np.where(a!=0)[0]
+            a = np.argmax(a)
         s, r, d, info = super(FrozenLakeEnv, self).step(a)
         if self.onehot: s = np.eye(self.nS)[s]
         return s, r, d, info

@@ -22,7 +22,7 @@ base = {
         ## model
         'model': 'models.TemporalUnet',
         'diffusion': 'models.GaussianDiffusion',
-        'horizon': 4,
+        'horizon': 8,
         'n_diffusion_steps': 20,
         'action_weight': 10,
         'loss_weights': None,
@@ -48,7 +48,7 @@ base = {
         ## training
         'n_steps_per_epoch': 1000,
         'loss_type': 'l2',
-        'n_train_steps': 500000,
+        'n_train_steps': 1e6,
         'batch_size': 128,
         'learning_rate': 2e-4,
         'gradient_accumulate_every': 2,
@@ -67,13 +67,13 @@ base = {
     'values': {
         'model': 'models.ValueFunction',
         'diffusion': 'models.ValueDiffusion',
-        'horizon': 4,
+        'horizon': 8,
         'n_diffusion_steps': 20,
         'dim_mults': (1, 2, 4),
         'renderer': None,
 
         ## value-specific kwargs
-        'discount': 0.997,
+        'discount': 0.99,
         'termination_penalty': 0,
         'normed': False,
 
@@ -92,7 +92,7 @@ base = {
         ## training
         'n_steps_per_epoch': 1000,
         'loss_type': 'value_l2',
-        'n_train_steps': 50000,
+        'n_train_steps': 1e6,
         'batch_size': 32,
         'learning_rate': 2e-4,
         'gradient_accumulate_every': 2,
@@ -110,13 +110,13 @@ base = {
     'cost_values': {
         'model': 'models.ValueFunction',
         'diffusion': 'models.ValueDiffusion',
-        'horizon': 4,
+        'horizon': 8,
         'n_diffusion_steps': 20,
         'dim_mults': (1, 2, 4),
         'renderer': None,
 
         ## value-specific kwargs
-        'discount': 0.997,
+        'discount': 0.99,
         'termination_penalty': 0,
         'normed': False,
 
@@ -174,11 +174,11 @@ base = {
         'max_render': 8,
 
         ## diffusion model
-        'horizon': 4,
+        'horizon': 8,
         'n_diffusion_steps': 20,
 
         ## value function
-        'discount': 0.997,
+        'discount': 0.99,
 
         ## loading
         'diffusion_loadpath': 'f:diffusion/defaults_H{horizon}_T{n_diffusion_steps}',
@@ -199,3 +199,34 @@ base = {
 }
 
 
+mycliffwalking_mix_v0 = {
+    
+}
+
+myroulette_random_v0 = {
+    'diffusion': {
+        'horizon': 2,
+        'dim_mults': (1, ),
+    },
+    'values': {
+        'horizon': 2,
+        'dim_mults': (1, 2),
+    },
+    'plan': {
+        'horizon': 2,
+    },
+}
+
+myFrozenLake_medium_replay_v0 = {
+    'diffusion': {
+        'horizon': 4,
+        
+    },
+    'values': {
+        'horizon': 4,
+        
+    },
+    'plan': {
+        'horizon': 4,
+    },
+}

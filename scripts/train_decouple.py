@@ -27,7 +27,6 @@ dataset_config = utils.Config(
     preprocess_fns=args.preprocess_fns,
     use_padding=args.use_padding,
     max_path_length=args.max_path_length,
-    max_n_episodes=30000 if 'mycliffwalking' in args.dataset else 10000
 )
 
 render_config = utils.Config(

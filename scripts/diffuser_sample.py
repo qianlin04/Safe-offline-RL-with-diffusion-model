@@ -16,7 +16,7 @@ class Parser(utils.Parser):
 args = Parser().parse_args('plan')
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
 #-----------------------------------------------------------------------------#
 #---------------------------------- loading ----------------------------------#
@@ -75,12 +75,15 @@ for _ in range(5):
         conditions = {0: observation}
         action, samples = policy(conditions, batch_size=args.batch_size, verbose=args.verbose)
 
-        env.render()
+        #env.render()
         import numpy as np
-        for i in range(len(samples.observations[0])):
-            x = samples.observations[0][i]
-            print("state:  ", np.unravel_index(np.argmax(x), env.shape), np.max(x))
-            print("action:  ", np.argmax(samples.actions[0][i]))
+        # for i in range(len(samples.observations[0])):
+        #     x = samples.observations[0][i]
+        #     print("state:  ", np.unravel_index(np.argmax(x), env.shape), np.max(x))
+        #     print("action:  ", np.argmax(samples.actions[0][i]))
+        print(samples.observations, samples.actions)
+        print(np.max(samples.observations, axis=-1), np.argmax(samples.observations, axis=-1))
+        print(np.max(samples.actions, axis=-1), np.argmax(samples.actions, axis=-1))
         assert 0
 
         ## execute action in environment

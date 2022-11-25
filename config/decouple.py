@@ -93,7 +93,7 @@ base = {
         ## trainingd
         'n_steps_per_epoch': 10000,
         'loss_type': 'value_l2',
-        'n_train_steps': 200e3,
+        'n_train_steps': 1e6,
         'batch_size': 32,
         'learning_rate': 2e-4,
         'gradient_accumulate_every': 2,
@@ -183,7 +183,7 @@ base = {
 
         ## loading
         'diffusion_loadpath': 'f:decouple_diffusion_casual_sync/defaults_H{horizon}_T{n_diffusion_steps}',
-        'value_loadpath': 'f:values/decouple_H{horizon}_T{n_diffusion_steps}_d{discount}',
+        'value_loadpath': 'f:values/defaults_H{horizon}_T{n_diffusion_steps}_d{discount}',
         'cost_value_loadpath': 'f:vel_cost_values/decouple_H{horizon}_T{n_diffusion_steps}_d{discount}',
 
         'cost_grad_weight': 10.0,

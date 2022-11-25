@@ -11,6 +11,8 @@ class Parser(utils.Parser):
 
 args = Parser().parse_args('diffusion')
 
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
 #-----------------------------------------------------------------------------#
 #---------------------------------- dataset ----------------------------------#
@@ -25,7 +27,6 @@ dataset_config = utils.Config(
     preprocess_fns=args.preprocess_fns,
     use_padding=args.use_padding,
     max_path_length=args.max_path_length,
-    max_n_episodes=30000 if 'mycliffwalking' in args.dataset else 10000
 )
 
 render_config = utils.Config(
@@ -51,8 +52,10 @@ if "decouple" in args.config:
         savepath=(args.savepath, 'dynamic_model_config.pkl'),
         horizon=args.horizon,
         transition_dim=observation_dim+action_dim,
+        output_dim=observation_dim,
         cond_dim=observation_dim,
         dim_mults=args.dim_mults,
+        attention=args.attention,
         device=args.device,
     )
 
@@ -61,8 +64,10 @@ if "decouple" in args.config:
         savepath=(args.savepath, 'policy_model_config.pkl'),
         horizon=args.horizon,
         transition_dim=observation_dim+action_dim,
+        output_dim=action_dim,
         cond_dim=observation_dim,
         dim_mults=args.dim_mults,
+        attention=args.attention,
         device=args.device,
     )
 else:
@@ -117,9 +122,12 @@ if "decouple" in args.config:
     dynamic_model = dynamic_model_config()
     policy_model = policy_model_config()
     diffusion = diffusion_config(policy_model, dynamic_model)
+    utils.report_parameters(dynamic_model)
+    utils.report_parameters(policy_model)
 else:
     model = model_config()
     diffusion = diffusion_config(model)
+    utils.report_parameters(model)
 
 trainer = trainer_config(diffusion, dataset, renderer)
 
@@ -128,7 +136,6 @@ trainer = trainer_config(diffusion, dataset, renderer)
 #------------------------ test forward & backward pass -----------------------#
 #-----------------------------------------------------------------------------#
 
-utils.report_parameters(model)
 
 print('Testing forward...', end=' ', flush=True)
 batch = utils.batchify(dataset[0])

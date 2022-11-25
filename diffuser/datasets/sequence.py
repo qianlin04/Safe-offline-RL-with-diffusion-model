@@ -144,6 +144,10 @@ class ValueDataset(SequenceDataset):
             rewards = self.fields['rewards'][path_ind, start:]
             discounts = self.discounts[:len(rewards)]
             value = (discounts * rewards).sum()
+
+            # obs = [np.where(tran!=0)[0][0] if len(np.where(tran!=0)[0]) else 0 for tran in self.fields['observations'][path_ind, start:end]]
+            # if np.all(obs == np.arange(24, 32)):
+            #     print(value)
         else:
             field = {k:v[path_ind] for k, v in self.fields.items()}
             field['path_lengths'] = self.fields['path_lengths'][path_ind]

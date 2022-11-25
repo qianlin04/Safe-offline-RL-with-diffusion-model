@@ -12,11 +12,12 @@ import diffuser.utils as utils
 class Parser(utils.Parser):
     dataset: str = 'walker2d-medium-replay-v2'
     config: str = 'config.locomotion'
+    n_test_episode: int = 5
 
 args = Parser().parse_args('plan')
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
 #-----------------------------------------------------------------------------#
 #---------------------------------- loading ----------------------------------#
@@ -80,7 +81,8 @@ policy = policy_config()
 #-----------------------------------------------------------------------------#
 all_results = []
 all_scores = []
-for _ in range(5):
+all_return = []
+for _ in range(args.n_test_episode):
 
     env = dataset.env
     observation = env.reset()
@@ -92,7 +94,7 @@ for _ in range(5):
 
     for t in range(args.max_episode_length):
 
-        if t % 10 == 0: print(args.savepath, flush=True)
+        #if t % 10 == 0: print(args.savepath, flush=True)
 
         ## save state for rendering only
         # state = env.state_vector().copy()
@@ -103,10 +105,26 @@ for _ in range(5):
 
         ## execute action in environment
         next_observation, reward, terminal, _ = env.step(action)
+        
+        # import numpy as np
+        # env.render()
+        # dire = ['U', 'R', 'D', 'L']
+        # print("action:   ", dire[np.argmax(action)], np.max(action))
+        # for k, traj in enumerate(samples.observations):
+        #     o = np.zeros((4,12))
+        #     for i in range(8):
+        #         pos = np.argmax(traj[i, :])
+        #         o[ np.unravel_index(pos, o.shape)] = i+1
+        #     print(o)
+        #     print("values:  ", samples.values[k])
+        # input()
 
         ## print reward and score
         total_reward += reward
-        score = env.get_normalized_score(total_reward)
+        if hasattr(env, 'get_normalized_score'):
+            score = env.get_normalized_score(total_reward)
+        else:
+            score = 0
         print(
             f't: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | '
             f'values: {samples.values[0]} | scale: {args.scale}',
@@ -127,11 +145,13 @@ for _ in range(5):
     all_results.append(f't: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | '
                        f'values: {samples.values[0]} | scale: {args.scale}')
     all_scores.append(score)
+    all_return.append(total_reward)
 
     ## write results to json file at `args.savepath`
     #logger.finish(t, score, total_reward, terminal, diffusion_experiment, value_experiment)
     for res in all_results:
         print(res)
-    print(all_scores)
+    print(all_scores, all_return)
     import numpy as np
-    print(np.mean(all_scores))
+    print("scores:      ", np.mean(all_scores))
+    print("return:      ", np.mean(all_return))
