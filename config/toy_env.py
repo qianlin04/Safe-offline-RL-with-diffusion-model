@@ -53,8 +53,8 @@ base = {
         'learning_rate': 2e-4,
         'gradient_accumulate_every': 2,
         'ema_decay': 0.995,
-        'save_freq': 20000,
-        'sample_freq': 20000,
+        'save_freq': 10000,
+        'sample_freq': 10000,
         'n_saves': 5,
         'save_parallel': False,
         'gradient_accumulate_every': 8,
@@ -205,19 +205,33 @@ mycliffwalking_mix_v0 = {
 
 myroulette_random_v0 = {
     'diffusion': {
-        'horizon': 2,
-        'dim_mults': (1, ),
+        'horizon': 4,
+        #'dim_mults': (1, ),
     },
     'values': {
-        'horizon': 2,
-        'dim_mults': (1, 2),
+        'horizon': 4,
+        #'dim_mults': (1, 2),
     },
     'plan': {
-        'horizon': 2,
+        'horizon': 4,
     },
 }
 
 myFrozenLake_medium_replay_v0 = {
+    'diffusion': {
+        'horizon': 4,
+        
+    },
+    'values': {
+        'horizon': 4,
+        
+    },
+    'plan': {
+        'horizon': 4,
+    },
+}
+
+TwoStepMDP_v0 ={
     'diffusion': {
         'horizon': 4,
         
