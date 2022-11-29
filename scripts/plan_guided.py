@@ -82,6 +82,7 @@ policy = policy_config()
 all_results = []
 all_scores = []
 all_return = []
+all_episode_len = []
 for _ in range(args.n_test_episode):
 
     env = dataset.env
@@ -106,7 +107,8 @@ for _ in range(args.n_test_episode):
         ## execute action in environment
         next_observation, reward, terminal, _ = env.step(action)
         
-        # import numpy as np
+        import numpy as np
+        print("action:  ", np.argmax(action), "state:  ", np.max(action))
         # env.render()
         # dire = ['U', 'R', 'D', 'L']
         # print("action:   ", dire[np.argmax(action)], np.max(action))
@@ -146,12 +148,16 @@ for _ in range(args.n_test_episode):
                        f'values: {samples.values[0]} | scale: {args.scale}')
     all_scores.append(score)
     all_return.append(total_reward)
+    all_episode_len.append(t)
 
     ## write results to json file at `args.savepath`
     #logger.finish(t, score, total_reward, terminal, diffusion_experiment, value_experiment)
     for res in all_results:
         print(res)
-    print(all_scores, all_return)
+    print("all scores:  ", all_scores)
+    print("all return:  ", all_return)
+    print("all episode len:  ", all_episode_len)
     import numpy as np
-    print("scores:      ", np.mean(all_scores))
-    print("return:      ", np.mean(all_return))
+    print("mean scores:      ", np.mean(all_scores))
+    print("mean return:      ", np.mean(all_return))
+    print("mean episode len:      ", np.mean(all_episode_len))

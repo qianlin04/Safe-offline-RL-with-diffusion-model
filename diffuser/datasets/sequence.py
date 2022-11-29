@@ -17,13 +17,14 @@ class SequenceDataset(torch.utils.data.Dataset):
 
     def __init__(self, env='hopper-medium-replay', horizon=64,
         normalizer='LimitsNormalizer', preprocess_fns=[], max_path_length=1000,
-        max_n_episodes=10000, termination_penalty=0, use_padding=True, seed=None):
+        max_n_episodes=10000, termination_penalty=0, use_padding=True, seed=None, predict_reward_done=False):
         self.preprocess_fn = get_preprocess_fn(preprocess_fns, env)
         self.env = env = load_environment(env)
         self.env.seed(seed)
         self.horizon = horizon
         self.max_path_length = max_path_length
         self.use_padding = use_padding
+        self.predict_reward_done = predict_reward_done
         self.termination_penalty = termination_penalty
         itr = sequence_dataset(env, self.preprocess_fn)
 
@@ -46,7 +47,7 @@ class SequenceDataset(torch.utils.data.Dataset):
         # shapes = {key: val.shape for key, val in self.fields.items()}
         # print(f'[ datasets/mujoco ] Dataset fields: {shapes}')
 
-    def normalize(self, keys=['observations', 'actions']):
+    def normalize(self, keys=['observations', 'actions', 'rewards', 'terminals']):
         '''
             normalize fields that will be predicted by the diffusion model
         '''
@@ -87,6 +88,9 @@ class SequenceDataset(torch.utils.data.Dataset):
         actions = self.fields.normed_actions[path_ind, start:end]
 
         conditions = self.get_conditions(observations)
+        if self.predict_reward_done:
+            observations = np.concatenate([observations, 
+                            self.fields.normed_rewards[path_ind, start:end], self.fields.normed_terminals[path_ind, start:end]], axis=-1)
         trajectories = np.concatenate([actions, observations], axis=-1)
         batch = Batch(trajectories, conditions)
         return batch

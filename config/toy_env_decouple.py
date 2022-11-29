@@ -57,11 +57,11 @@ base = {
         'sample_freq': 10000,
         'n_saves': 5,
         'save_parallel': False,
-        'gradient_accumulate_every': 8,
         'bucket': None,
         'device': 'cuda',
         'seed': None,
         'n_reference': 8,
+        'predict_reward_done': False,
     },
 
     'values': {
@@ -196,8 +196,88 @@ base = {
 
         'state_grad_mask': False,
     },
+
+    'policylearning': {
+        ## model
+        'model': 'models.TemporalConvNet',
+        'diffusion': 'models.PolicyDynamicDiffusion',
+        'agent': 'agent.CQLPolicy',
+        'horizon': 8,
+        'n_diffusion_steps': 20,
+        'action_weight': 10,
+        'loss_weights': None,
+        'loss_discount': 1,
+        'predict_epsilon': False,
+        'dim_mults': (1, 2, 4),
+        'attention': False,
+        'renderer': None,
+
+        ## dataset
+        'replaybuffer': 'datasets.ReplayBuffer',
+        'loader': 'datasets.SequenceDataset',
+        'normalizer': 'DebugNormalizer',
+        'preprocess_fns': [],
+        'clip_denoised': False,
+        'use_padding': True,
+        'max_path_length': 200,
+
+        ## serialization
+        'logbase': logbase,
+        'prefix': 'f:decouple_policylearning_{seed}/defaults',
+        'exp_name': watch(args_to_watch),
+
+        ## training
+        'n_steps_per_epoch': 1000,
+        'loss_type': 'l2',
+        'n_train_steps': 2e6,
+        'batch_size': 128,
+        'learning_rate': 2e-4,
+        'actor_learning_rate': 2e-4,
+        'critic_learning_rate': 2e-4,
+        'gradient_accumulate_every': 2,
+        'ema_decay': 0.995,
+        'save_freq': 10000,
+        'sample_freq': 10000,
+        'n_saves': 5,
+        'save_parallel': False,
+        'bucket': None,
+        'device': 'cuda',
+        'seed': 0,
+        'n_reference': 8,
+
+        'rollout_batch_size': 50000,
+        'rollout_length': 5, 
+        'model_retain_epochs': 5,
+        'rollout_freq': 1000,
+        'real_ratio': 0.05,
+        'agent_batch_size': 256,
+        'eval_episodes': 10,
+        'load_epoch': None,
+        'train_policy_freq': 1, 
+
+        'use_wandb': True,
+        'group': 'default',
+        'algo': 'CQL_diffusion', 
+    },
 }
 
+mycliffwalking_mix_v0 = {
+    'diffusion': {
+        'prefix': 'decouple_reward_model/defaults',
+        'predict_reward_done': True,
+    },
+    'plan': {
+        'diffusion_loadpath': 'f:decouple_policylearning/defaults_H{horizon}_T{n_diffusion_steps}',
+    }, 
+    'policylearning': {
+        'load_epoch': 790000,
+        'rollout_batch_size': 1200,
+        'rollout_length': 8,
+        'seed': 0,
+        'real_ratio': 1.0,
+        'use_wandb':True, 
+    }
+}
 
 myroulette_random_v0 = {
     'diffusion': {

@@ -28,7 +28,7 @@ def default_sample_fn(model, x, cond, t, guide=None):
     values = torch.zeros(len(x), device=x.device)
     return model_mean + model_std * noise, values, values
 
-@torch.no_grad()
+#@torch.no_grad()
 def decouple_default_sample_fn(model, x, cond, t, policy_step=True, guide=None):
     model_mean, _, model_log_variance = model.p_mean_variance(x=x, cond=cond, t=t, policy_step=policy_step)
     model_std = torch.exp(0.5 * model_log_variance)
@@ -59,13 +59,14 @@ def make_timesteps(batch_size, i, device):
 class GaussianDiffusion(nn.Module):
     def __init__(self, model, horizon, observation_dim, action_dim, n_timesteps=1000,
         loss_type='l1', clip_denoised=False, predict_epsilon=True,
-        action_weight=1.0, loss_discount=1.0, loss_weights=None,
+        action_weight=1.0, loss_discount=1.0, loss_weights=None, predict_reward_done=False, 
     ):
         super().__init__()
         self.horizon = horizon
+        self.predict_reward_done = predict_reward_done
         self.observation_dim = observation_dim
         self.action_dim = action_dim
-        self.transition_dim = observation_dim + action_dim
+        self.transition_dim = observation_dim + action_dim + 2 * predict_reward_done
         self.model = model
 
         betas = cosine_beta_schedule(n_timesteps)
@@ -268,15 +269,16 @@ class ValueDiffusion(GaussianDiffusion):
 
 
 class PolicyDynamicDiffusion(nn.Module):
-    def __init__(self, policy_model, dynamic_model, horizon, observation_dim, action_dim, n_timesteps=1000,
+    def __init__(self, policy_model, dynamic_model, horizon, observation_dim, action_dim, n_timesteps=1000, 
         loss_type='l1', clip_denoised=False, predict_epsilon=True,
-        action_weight=1.0, loss_discount=1.0, loss_weights=None, sync_generate=False
+        action_weight=1.0, loss_discount=1.0, loss_weights=None, sync_generate=False, predict_reward_done=False
     ):
         super().__init__()
         self.horizon = horizon
+        self.predict_reward_done = predict_reward_done
         self.observation_dim = observation_dim
         self.action_dim = action_dim
-        self.transition_dim = observation_dim + action_dim
+        self.transition_dim = observation_dim + action_dim + 2 * predict_reward_done
         self.policy_model = policy_model
         self.dynamic_model = dynamic_model
 
@@ -387,7 +389,6 @@ class PolicyDynamicDiffusion(nn.Module):
         #print("p_mean_variance:         ", model(x, cond, t)[0,0])
         return model_mean, posterior_variance, posterior_log_variance
 
-    @torch.no_grad()
     def p_sample_loop(self, shape, cond, verbose=True, return_chain=False, sample_fn=decouple_default_sample_fn, **sample_kwargs):
         device = self.betas.device
 
@@ -420,8 +421,27 @@ class PolicyDynamicDiffusion(nn.Module):
         if return_chain: chain = torch.stack(chain, dim=1)
         return Sample(x, values, costs, chain)
 
-    @torch.no_grad()
-    def conditional_sample(self, cond, horizon=None, **sample_kwargs):
+    def p_sample_loop_for_train(self, shape, cond, sample_fn=decouple_default_sample_fn, **sample_kwargs):
+        device = self.betas.device
+        batch_size = shape[0]
+        x = torch.randn(shape, device=device)
+        x = apply_conditioning(x, cond, self.action_dim)
+        for i in reversed(range(0, self.n_timesteps)):
+            t = make_timesteps(batch_size, i, device)
+         
+            x_action, values, costs = sample_fn(self, x, cond, t, policy_step=True, **sample_kwargs)
+            if not self.sync_generate:
+                x_dynamic_input = torch.cat([x_action, x[:, :, self.action_dim:]], -1)
+                x_dynamic_input = apply_conditioning(x_dynamic_input, cond, self.action_dim)
+            else:
+                x_dynamic_input = x
+              
+            x_state, _, costs = sample_fn(self, x_dynamic_input, cond, t, policy_step=False, **sample_kwargs)
+            x = torch.cat([x_action, x_state], -1)
+            x = apply_conditioning(x, cond, self.action_dim)
+        return Sample(x, values, costs, None)
+
+    def conditional_sample(self, cond, horizon=None, no_grad=True, training=False, **sample_kwargs):
         '''
             conditions : [ (time, state), ... ]
         '''
@@ -429,8 +449,12 @@ class PolicyDynamicDiffusion(nn.Module):
         batch_size = len(cond[0])
         horizon = horizon or self.horizon
         shape = (batch_size, horizon, self.transition_dim)
-
-        return self.p_sample_loop(shape, cond, **sample_kwargs)
+        p_sample_loop = self.p_sample_loop_for_train if training else self.p_sample_loop
+        if no_grad:
+            with torch.no_grad():
+                return p_sample_loop(shape, cond, **sample_kwargs)
+        else:
+            return p_sample_loop(shape, cond, **sample_kwargs)
 
     #------------------------------------------ training ------------------------------------------#
 

@@ -81,9 +81,21 @@ for _ in range(5):
         #     x = samples.observations[0][i]
         #     print("state:  ", np.unravel_index(np.argmax(x), env.shape), np.max(x))
         #     print("action:  ", np.argmax(samples.actions[0][i]))
-        print(samples.observations, samples.actions)
+        print(samples.observations, samples.actions, samples.rewards)
         print(np.max(samples.observations, axis=-1), np.argmax(samples.observations, axis=-1))
         print(np.max(samples.actions, axis=-1), np.argmax(samples.actions, axis=-1))
+
+        env.render()
+        dire = ['U', 'R', 'D', 'L']
+        print("action:   ", dire[np.argmax(action)], np.max(action))
+        for k, traj in enumerate(samples.observations):
+            o = np.zeros((4,12))
+            for i in range(8):
+                pos = np.argmax(traj[i, :])
+                o[ np.unravel_index(pos, o.shape)] = i+1
+            print(o)
+            print("values:  ", samples.values[k])
+        # input()
         assert 0
 
         ## execute action in environment

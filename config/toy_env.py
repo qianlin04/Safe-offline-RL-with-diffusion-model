@@ -57,11 +57,11 @@ base = {
         'sample_freq': 10000,
         'n_saves': 5,
         'save_parallel': False,
-        'gradient_accumulate_every': 8,
         'bucket': None,
         'device': 'cuda',
         'seed': None,
         'n_reference': 8,
+        'predict_reward_done': False,
     },
 
     'values': {
@@ -125,7 +125,7 @@ base = {
         'normalizer': 'DebugNormalizer',
         'preprocess_fns': [],
         'use_padding': True,
-        'max_path_length': 8,
+        'max_path_length': 200,
 
         ## serialization
         'logbase': logbase,
@@ -200,7 +200,10 @@ base = {
 
 
 mycliffwalking_mix_v0 = {
-    
+    'diffusion': {
+        'prefix': 'diffusion_reward_model/defaults',
+        'predict_reward_done': True,
+    }
 }
 
 myroulette_random_v0 = {

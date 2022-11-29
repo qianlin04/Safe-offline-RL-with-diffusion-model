@@ -2,12 +2,13 @@ from collections import namedtuple
 import torch
 import einops
 import pdb
+import numpy as np
 
 import diffuser.utils as utils
 from diffuser.datasets.preprocessing import get_policy_preprocess_fn
 
 
-Trajectories = namedtuple('Trajectories', 'actions observations values costs')
+Trajectories = namedtuple('Trajectories', 'actions observations rewards terminals values costs')
 
 
 class GuidedPolicy:
@@ -17,6 +18,7 @@ class GuidedPolicy:
         self.diffusion_model = diffusion_model
         self.normalizer = normalizer
         self.action_dim = diffusion_model.action_dim
+        self.observation_dim = diffusion_model.observation_dim
         self.preprocess_fn = get_policy_preprocess_fn(preprocess_fns)
         self.sample_kwargs = sample_kwargs
 
@@ -36,9 +38,20 @@ class GuidedPolicy:
         ## extract first action
         action = actions[0, 0]
 
-        normed_observations = trajectories[:, :, self.action_dim:]
+        tran_dim = self.action_dim+self.observation_dim
+        normed_observations = trajectories[:, :, self.action_dim:tran_dim]
         observations = self.normalizer.unnormalize(normed_observations, 'observations')
-        trajectories = Trajectories(actions, observations, samples.values, samples.costs)
+        
+        if trajectories.shape[-1] > tran_dim:
+            normed_rewards = trajectories[:, :, tran_dim:tran_dim+1]
+            normed_terminals = trajectories[:, :, tran_dim+1:tran_dim+2]
+            rewards = self.normalizer.unnormalize(normed_rewards, 'rewards')
+            terminals = self.normalizer.unnormalize(normed_terminals, 'terminals')
+        else:
+            rewards = np.zeros(trajectories.shape[:-1]+[1])
+            terminals = np.zeros(trajectories.shape[:-1]+[1])
+
+        trajectories = Trajectories(actions, observations, rewards, terminals, samples.values, samples.costs)
         return action, trajectories
 
     @property

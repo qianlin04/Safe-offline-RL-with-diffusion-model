@@ -1,15 +1,20 @@
 import diffuser.utils as utils
-
+import numpy as np
+import gym
+import gym.spaces
+import d4rl
+import wandb
 
 #-----------------------------------------------------------------------------#
 #----------------------------------- setup -----------------------------------#
 #-----------------------------------------------------------------------------#
 
-class Parser(utils.Parser):
+class Parser(utils.Parser): 
     dataset: str = 'hopper-medium-expert-v2'
     config: str = 'config.locomotion'
+    project: str = 'DecoupleDifussion'
 
-args = Parser().parse_args('diffusion')
+args = Parser().parse_args('policylearning')
 
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = '1'
@@ -17,6 +22,17 @@ os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 #-----------------------------------------------------------------------------#
 #---------------------------------- dataset ----------------------------------#
 #-----------------------------------------------------------------------------#
+
+if args.use_wandb:
+    wandb.init(
+        project=args.project,
+        config=args,
+        name=f'{args.dataset}_{args.algo}_{args.seed}',
+        group=args.group
+    )
+
+env = gym.make(args.dataset)
+dataset = d4rl.qlearning_dataset(env)
 
 dataset_config = utils.Config(
     args.loader,
@@ -27,7 +43,15 @@ dataset_config = utils.Config(
     preprocess_fns=args.preprocess_fns,
     use_padding=args.use_padding,
     max_path_length=args.max_path_length,
-    predict_reward_done=args.predict_reward_done, 
+    predict_reward_done=True, 
+)
+
+replaybuffer_config = utils.Config(
+    args.replaybuffer,
+    obs_shape=env.observation_space.shape if not type(env.observation_space) is gym.spaces.Discrete else (env.observation_space.n, ),
+    obs_dtype=np.float32,
+    action_dim=int(np.prod(env.action_space.shape)) if not type(env.action_space) is gym.spaces.Discrete else env.action_space.n,
+    action_dtype=np.float32
 )
 
 render_config = utils.Config(
@@ -36,52 +60,43 @@ render_config = utils.Config(
     env=args.dataset,
 )
 
+offline_buffer = replaybuffer_config(buffer_size=1)
+offline_buffer.load_dataset(dataset)
+model_buffer = replaybuffer_config(buffer_size=args.rollout_batch_size*args.rollout_length*args.model_retain_epochs)
 dataset = dataset_config()
 renderer = render_config()
 
 observation_dim = dataset.observation_dim
 action_dim = dataset.action_dim
-transition_dim = observation_dim + action_dim + 2 * args.predict_reward_done
- 
+transition_dim = observation_dim + action_dim + 2
+
 #-----------------------------------------------------------------------------#
 #------------------------------ model & trainer ------------------------------#
 #-----------------------------------------------------------------------------#
 
+dynamic_model_config = utils.Config(
+    args.model,
+    savepath=(args.savepath, 'dynamic_model_config.pkl'),
+    horizon=args.horizon,
+    transition_dim=transition_dim,
+    output_dim=observation_dim + 2,
+    cond_dim=observation_dim,
+    dim_mults=args.dim_mults,
+    attention=args.attention,
+    device=args.device,
+)
 
-if "decouple" in args.config:
-    dynamic_model_config = utils.Config(
-        args.model,
-        savepath=(args.savepath, 'dynamic_model_config.pkl'),
-        horizon=args.horizon,
-        transition_dim=transition_dim,
-        output_dim=observation_dim + 2 * args.predict_reward_done,
-        cond_dim=observation_dim,
-        dim_mults=args.dim_mults,
-        attention=args.attention,
-        device=args.device,
-    )
-
-    policy_model_config = utils.Config(
-        args.model,
-        savepath=(args.savepath, 'policy_model_config.pkl'),
-        horizon=args.horizon,
-        transition_dim=transition_dim,
-        output_dim=action_dim,
-        cond_dim=observation_dim,
-        dim_mults=args.dim_mults,
-        attention=args.attention,
-        device=args.device,
-    )
-else:
-    model_config = utils.Config(
-        args.model,
-        savepath=(args.savepath, 'model_config.pkl'),
-        horizon=args.horizon,
-        transition_dim=transition_dim,
-        cond_dim=observation_dim,
-        dim_mults=args.dim_mults,
-        device=args.device,
-    )
+policy_model_config = utils.Config(
+    args.model,
+    savepath=(args.savepath, 'policy_model_config.pkl'),
+    horizon=args.horizon,
+    transition_dim=transition_dim,
+    output_dim=action_dim,
+    cond_dim=observation_dim,
+    dim_mults=args.dim_mults,
+    attention=args.attention,
+    device=args.device,
+)
 
 diffusion_config = utils.Config(
     args.diffusion,
@@ -98,11 +113,22 @@ diffusion_config = utils.Config(
     loss_weights=args.loss_weights,
     loss_discount=args.loss_discount,
     device=args.device,
-    predict_reward_done = args.predict_reward_done, 
+    predict_reward_done=True,
 )
 
+agent_config = utils.Config(
+    args.agent,
+    critic_input_dim=observation_dim+action_dim, 
+    actor_lr=args.actor_learning_rate,
+    critic_lr=args.critic_learning_rate,
+    to_device=args.device,
+    device=args.device,
+    action_space=env.action_space,
+)
+
+
 trainer_config = utils.Config(
-    utils.Trainer,
+    utils.PolicyTrainer,
     savepath=(args.savepath, 'trainer_config.pkl'),
     train_batch_size=args.batch_size,
     train_lr=args.learning_rate,
@@ -115,24 +141,29 @@ trainer_config = utils.Config(
     results_folder=args.savepath,
     bucket=args.bucket,
     n_reference=args.n_reference,
+    rollout_length=args.rollout_length,
+    rollout_batch_size=args.rollout_batch_size, 
+    rollout_freq=args.rollout_freq,
+    train_policy_freq=args.train_policy_freq,
+    real_ratio=args.real_ratio,
+    agent_batch_size=args.agent_batch_size,
+    use_wandb=args.use_wandb,
 )
 
 #-----------------------------------------------------------------------------#
 #-------------------------------- instantiate --------------------------------#
 #-----------------------------------------------------------------------------#
 
-if "decouple" in args.config:
-    dynamic_model = dynamic_model_config()
-    policy_model = policy_model_config()
-    diffusion = diffusion_config(policy_model, dynamic_model)
-    utils.report_parameters(dynamic_model)
-    utils.report_parameters(policy_model)
-else:
-    model = model_config()
-    diffusion = diffusion_config(model)
-    utils.report_parameters(model)
+dynamic_model = dynamic_model_config()
+policy_model = policy_model_config()
+diffusion = diffusion_config(policy_model, dynamic_model)
+utils.report_parameters(dynamic_model)
+utils.report_parameters(policy_model)
+agent = agent_config(diffusion)
 
-trainer = trainer_config(diffusion, dataset, renderer)
+trainer = trainer_config(diffusion, dataset, renderer, agent, offline_buffer, model_buffer)
+if hasattr(args, 'load_epoch') and args.load_epoch:
+    trainer.load(args.load_epoch)
 
 #-----------------------------------------------------------------------------#
 #------------------------ test forward & backward pass -----------------------#
@@ -155,4 +186,6 @@ n_epochs = int(args.n_train_steps // args.n_steps_per_epoch)
 for i in range(n_epochs):
     print(f'Epoch {i} / {n_epochs} | {args.savepath}')
     trainer.train(n_train_steps=args.n_steps_per_epoch)
+    eval_results = trainer.evaluate(env, eval_episodes=args.eval_episodes)
+    print(eval_results)
 

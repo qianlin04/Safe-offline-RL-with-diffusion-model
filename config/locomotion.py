@@ -62,6 +62,7 @@ base = {
         'device': 'cuda',
         'seed': None,
         'n_reference': 8,
+        'predict_reward_done': False,
     },
 
     'values': {

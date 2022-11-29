@@ -18,7 +18,7 @@ class RouletteEnv(gym.Env):
         self.datatype = datatype
         self.onehot = onehot
         self.n = spots + 1
-        self.action_space = spaces.Discrete(3)
+        self.action_space = spaces.Discrete(self.n)
         self.observation_space = spaces.Discrete(3)
         self.seed()
 

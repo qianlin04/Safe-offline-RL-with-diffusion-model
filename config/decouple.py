@@ -58,11 +58,11 @@ base = {
         'sample_freq': 20000,
         'n_saves': 5,
         'save_parallel': False,
-        'gradient_accumulate_every': 8,
         'bucket': None,
         'device': 'cuda',
         'seed': None,
         'n_reference': 8,
+        'predict_reward_done': False,
     },
 
     'values': {
@@ -149,6 +149,7 @@ base = {
         'bucket': None,
         'device': 'cuda',
         'seed': None,
+        
     },
 
     'plan': {
@@ -198,6 +199,65 @@ base = {
         'state_grad_mask': False,
         'test_cost_with_discount': True,
     },
+
+    'policylearning': {
+        ## model
+        'model': 'models.TemporalConvNet',
+        'diffusion': 'models.PolicyDynamicDiffusion',
+        'agent': 'agent.CQLPolicy',
+        'horizon': 32,
+        'n_diffusion_steps': 20,
+        'action_weight': 10,
+        'loss_weights': None,
+        'loss_discount': 1,
+        'predict_epsilon': False,
+        'dim_mults': (1, 2, 4, 2, 1),
+        'attention': False,
+        'renderer': 'utils.MuJoCoRenderer',
+
+        ## dataset
+        'replaybuffer': 'datasets.ReplayBuffer',
+        'loader': 'datasets.SequenceDataset',
+        'normalizer': 'GaussianNormalizer',
+        'preprocess_fns': [],
+        'clip_denoised': False,
+        'use_padding': True,
+        'max_path_length': 1000,
+
+        ## serialization
+        'logbase': logbase,
+        'prefix': 'decouple_diffusion_casual/defaults',
+        'exp_name': watch(args_to_watch),
+
+        ## training
+        'n_steps_per_epoch': 10000,
+        'loss_type': 'l2',
+        'n_train_steps': 1e6,
+        'batch_size': 32,
+        'learning_rate': 2e-4,
+        'actor_learning_rate': 2e-4,
+        'critic_learning_rate': 2e-4,
+        'gradient_accumulate_every': 2,
+        'ema_decay': 0.995,
+        'save_freq': 20000,
+        'sample_freq': 20000,
+        'n_saves': 5,
+        'save_parallel': False,
+        'bucket': None,
+        'device': 'cuda',
+        'seed': None,
+        'n_reference': 8,
+
+        'rollout_batch_size': 50000,
+        'rollout_length': 5, 
+        'model_retain_epochs': 5,
+        'rollout_freq': 1000,
+        'real_ratio': 0.05,
+        'agent_batch_size': 256,
+        'eval_episodes': 10,
+        'load_epoch': 20000,
+    },
+
 }
 
 
