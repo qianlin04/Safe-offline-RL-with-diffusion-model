@@ -201,7 +201,13 @@ base = {
         ## model
         'model': 'models.TemporalConvNet',
         'diffusion': 'models.PolicyDynamicDiffusion',
-        'agent': 'agent.CQLPolicy',
+        'agent_algo': 'COMBOPolicy',
+        'agent': 'f:agent.{agent_algo}',
+        'agent_params': {
+            'conservative_weight': 5.0,
+            'n_action_samples': 10,
+            'real_ratio': 0.05,
+        },
         'horizon': 8,
         'n_diffusion_steps': 20,
         'action_weight': 10,
@@ -223,7 +229,7 @@ base = {
 
         ## serialization
         'logbase': logbase,
-        'prefix': 'f:decouple_policylearning_{seed}/defaults',
+        'prefix': 'f:decouple_policylearning_{agent_algo}_{seed}/defaults',
         'exp_name': watch(args_to_watch),
 
         ## training
@@ -254,10 +260,11 @@ base = {
         'eval_episodes': 10,
         'load_epoch': None,
         'train_policy_freq': 1, 
+        'warmup_step': 4e5,
 
         'use_wandb': True,
         'group': 'default',
-        'algo': 'CQL_diffusion', 
+        'algo': 'f:{agent_algo}_diffusion', 
     },
 }
 
@@ -274,8 +281,13 @@ mycliffwalking_mix_v0 = {
         'rollout_batch_size': 1200,
         'rollout_length': 8,
         'seed': 0,
-        'real_ratio': 1.0,
-        'use_wandb':True, 
+        'real_ratio': 0.05,
+        'agent_params': {
+            'conservative_weight': 5.0,
+            'n_action_samples': 10,
+            'real_ratio': 0.05,
+        },
+        'use_wandb':False, 
     }
 }
 

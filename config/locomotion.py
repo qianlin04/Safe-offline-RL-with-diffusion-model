@@ -57,7 +57,6 @@ base = {
         'sample_freq': 20000,
         'n_saves': 5,
         'save_parallel': False,
-        'gradient_accumulate_every': 8,
         'bucket': None,
         'device': 'cuda',
         'seed': None,

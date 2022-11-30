@@ -204,7 +204,13 @@ base = {
         ## model
         'model': 'models.TemporalConvNet',
         'diffusion': 'models.PolicyDynamicDiffusion',
-        'agent': 'agent.CQLPolicy',
+        'agent_algo': 'COMBOPolicy',
+        'agent': 'f:agent.{agent_algo}',
+        'agent_params': {
+            'conservative_weight': 5.0,
+            'n_action_samples': 10,
+            'real_ratio': 0.05,
+        },
         'horizon': 32,
         'n_diffusion_steps': 20,
         'action_weight': 10,
@@ -226,7 +232,7 @@ base = {
 
         ## serialization
         'logbase': logbase,
-        'prefix': 'decouple_diffusion_casual/defaults',
+        'prefix': 'f:decouple_policylearning_{agent_algo}_{seed}/defaults',
         'exp_name': watch(args_to_watch),
 
         ## training
@@ -255,7 +261,13 @@ base = {
         'real_ratio': 0.05,
         'agent_batch_size': 256,
         'eval_episodes': 10,
-        'load_epoch': 20000,
+        'load_epoch': None,
+        'train_policy_freq': 1, 
+        'warmup_step': 2e5,
+
+        'use_wandb': True,
+        'group': 'default',
+        'algo': 'f:{agent_algo}_diffusion', 
     },
 
 }

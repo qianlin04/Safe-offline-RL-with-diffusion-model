@@ -1,131 +1,123 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from gym.spaces import Box, Discrete 
 
 from copy import deepcopy
-from SACPolicy import SACPolicy
+from diffuser.agent.CQLPolicy import CQLPolicy
 
-
-
-class COMBOPolicy(SACPolicy, nn.Module):
+class COMBOPolicy(CQLPolicy, nn.Module):
     def __init__(
         self, 
         actor, 
         critic_input_dim, 
         actor_lr,
         critic_lr,
-        critic_hidden_dims = [256, 256], 
+        action_space, 
+        critic_hidden_dims=[256, 256], 
         tau=0.5, 
         gamma=0.99, 
         alpha=0.2,
-        to_device="cpu"
+        to_device="cpu",
+        conservative_weight=5.0,
+        n_action_samples=10,
+        real_ratio=1.0,
     ):
         super().__init__(
             actor=actor, 
             critic_input_dim=critic_input_dim, 
             actor_lr=actor_lr,
             critic_lr=critic_lr,
+            action_space=action_space,
             critic_hidden_dims=critic_hidden_dims, 
             tau=tau, 
             gamma=gamma, 
             alpha=alpha,
-            to_device=to_device
+            to_device=to_device,
+            conservative_weight=conservative_weight,
+            n_action_samples=n_action_samples,
+        )
+        self.real_ratio = real_ratio
+
+    def sample_random_action(self, batch_size):
+        if type(self.action_space) is Box:
+            action = np.random.uniform(self.action_space.low, self.action_space.high, size=(batch_size, len(self.action_space.low)))
+        elif type(self.action_space) is Discrete:
+            action = np.eye(self.action_space.n)[np.random.randint(0, self.action_space.n, size=batch_size)]
+        else:
+            action = [self.action_space.sample() for _ in range(batch_size)]
+            action = np.vstack(action)
+        action = torch.as_tensor(action).to(self._device)
+        return action
+
+    def compute_q_value(self, policy_obs, value_obs, random_policy=False):
+        obs_shape = policy_obs.shape
+        policy_obs = policy_obs.expand(self.n_action_samples, *obs_shape)
+        policy_obs = policy_obs.transpose(0, 1)
+        policy_obs = policy_obs.reshape(-1, *obs_shape[1:])
+        if random_policy:
+            policy_actions = self.sample_random_action(policy_obs.shape[0]) 
+        else:
+            with torch.no_grad():
+                policy_actions, _ = self(policy_obs)
+
+        obs_shape = value_obs.shape
+        repeated_obs = value_obs.expand(self.n_action_samples, *obs_shape)
+        # (n, batch, observation) -> (batch, n, observation)
+        transposed_obs = repeated_obs.transpose(0, 1)
+        # (batch, n, observation) -> (batch * n, observation)
+        flat_obs = transposed_obs.reshape(-1, *obs_shape[1:])
+        # (batch, n, action) -> (batch * n, action)
+        flat_policy_acts = policy_actions.reshape(-1, self.action_dim)
+
+        # estimate action-values for policy actions
+        policy_values_1 = self.critic1(flat_obs, flat_policy_acts)
+        policy_values_2 = self.critic2(flat_obs, flat_policy_acts)
+        policy_values_1 = policy_values_1.view(
+            obs_shape[0], self.n_action_samples
+        )
+        policy_values_2 = policy_values_2.view(
+            obs_shape[0], self.n_action_samples
         )
 
-        self.action_dim = actor.action_dim
-        self.observation_dim = actor.observation_dim
-        self.actor = actor
-        self.actor_lr = actor_lr
-        critic1 = Critic(input_dim=critic_input_dim, hidden_dims=critic_hidden_dims, device=to_device)
-        actor_optim = torch.optim.Adam(actor.policy_model.parameters(), lr=actor_lr)
-        critic2 = Critic(input_dim=critic_input_dim, hidden_dims=critic_hidden_dims, device=to_device)
-        critic1_optim = torch.optim.Adam(critic1.parameters(), lr=critic_lr)
-        critic2_optim = torch.optim.Adam(critic2.parameters(), lr=critic_lr)
+        return policy_values_1, policy_values_2
 
-        self.critic1, self.critic1_old = critic1, deepcopy(critic1)
-        self.critic1_old.eval()
-        self.critic2, self.critic2_old = critic2, deepcopy(critic2)
-        self.critic2_old.eval()
+    def compute_conservative_loss(self, obs_t: torch.Tensor, act_t: torch.Tensor, obs_tp1: torch.Tensor):
 
-        self.actor_optim = actor_optim
-        self.critic1_optim = critic1_optim
-        self.critic2_optim = critic2_optim
-        
-        self._tau = tau
-        self._gamma = gamma
+        fake_obs_t = obs_t[int(obs_t.shape[0] * self.real_ratio) :]
+        fake_obs_tp1 = obs_tp1[int(obs_tp1.shape[0] * self.real_ratio) :]
+        real_obs_t = obs_t[: int(obs_t.shape[0] * self.real_ratio)]
+        real_act_t = act_t[: int(act_t.shape[0] * self.real_ratio)]
 
-        self._is_auto_alpha = False
-        if isinstance(alpha, tuple):
-            self._is_auto_alpha = True
-            self._target_entropy, self._log_alpha, self._alpha_optim = alpha
-            self._alpha = self._log_alpha.detach().exp()
-        else:
-            self._alpha = alpha
-        
-        self.__eps = np.finfo(np.float32).eps.item()
+        policy_values_t_1, policy_values_t_2 = self.compute_q_value(fake_obs_t, fake_obs_t)
+        policy_values_tp1_1, policy_values_tp1_2 = self.compute_q_value(fake_obs_tp1, fake_obs_t)
+        random_values_1, random_values_2 = self.compute_q_value(fake_obs_t, fake_obs_t, random_policy=True)
 
-        self._device = to_device
+        # compute logsumexp
+        # (batch, 3 * n samples) -> (batch, 1)
+        target_values_1 = torch.cat(
+            [policy_values_t_1, policy_values_tp1_1, random_values_1], dim=1
+        )
+        target_values_2 = torch.cat(
+            [policy_values_t_2, policy_values_tp1_2, random_values_2], dim=1
+        )
+        logsumexp_1 = torch.logsumexp(target_values_1, dim=1, keepdim=True)
+        logsumexp_2 = torch.logsumexp(target_values_2, dim=1, keepdim=True)
 
-    def load_actor(self, actor):
-        self.actor = actor
-        self.actor_optim = torch.optim.Adam(actor.policy_model.parameters(), lr=self.actor_lr)
+        # estimate action-values for data actions
+        data_values_1 = self.critic1(real_obs_t, real_act_t)
+        data_values_2 = self.critic2(real_obs_t, real_act_t)
 
-    def train(self):
-        self.actor.train()
-        self.critic1.train()
-        self.critic2.train()
+        loss_1 = logsumexp_1.mean(dim=0).mean() - data_values_1.mean(dim=0).mean()
+        scaled_loss_1 = self.conservative_weight * loss_1
+        loss_2 = logsumexp_2.mean(dim=0).mean() - data_values_2.mean(dim=0).mean()
+        scaled_loss_2 = self.conservative_weight * loss_2
 
-    def eval(self):
-        self.actor.eval()
-        self.critic1.eval()
-        self.critic2.eval()
-    
-    def _sync_weight(self):
-        for o, n in zip(self.critic1_old.parameters(), self.critic1.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
-        for o, n in zip(self.critic2_old.parameters(), self.critic2.parameters()):
-            o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
+        return scaled_loss_1, scaled_loss_2
 
-    def forward(self, obs, horizon=1, no_grad=True, deterministic=False):
-        cond = {0: torch.tensor(obs, device=self._device)}
-        samples = self.actor(cond, no_grad=no_grad, horizon=horizon, training=True)
-        trajectories = samples.trajectories
-        action = trajectories[:, 0, :self.action_dim]
-
-        # dire = ['U', 'R', 'D', 'L']
-        # tr = trajectories[:, :, self.action_dim:self.action_dim+self.observation_dim].cpu().numpy()
-        # print("action:   ", dire[np.argmax(action.cpu().numpy())], np.max(action.cpu().numpy()))
-        # print(obs[0], np.where(obs[0]!=0)[0])
-        # print(action)
-        # for k, traj in enumerate(tr):
-        #     o = np.zeros((4,12))
-        #     for i in range(8):
-        #         pos = np.argmax(traj[i, :])
-        #         o[ np.unravel_index(pos, o.shape)] = i+1
-        #     print(o)
-        # input()
-
-        return action, trajectories
-
-    def get_transitions(self, trajectories):
-        tran_dim = self.action_dim + self.observation_dim
-        actions = trajectories[:, :, :self.action_dim].cpu().numpy()
-        observations = trajectories[:, :, self.action_dim:tran_dim].cpu().numpy()
-        rewards = trajectories[:, :, tran_dim:tran_dim+1].cpu().numpy()
-        terminals = trajectories[:, :, tran_dim+1:].cpu().numpy()
-        return observations, actions, rewards, terminals
-
-    def sample_action(self, obs, horizon=None, deterministic=False):
-        obs = np.expand_dims(obs, 0)
-        actions, trajectories = self(obs, horizon=horizon)
-        return actions[0].cpu().detach().numpy()
-
-    def learn(self, data):
-        obs, actions, next_obs, terminals, rewards = data["observations"], \
-            data["actions"], data["next_observations"], data["terminals"], data["rewards"]
-        
-        rewards = torch.as_tensor(rewards).to(self._device)
-        terminals = torch.as_tensor(terminals).to(self._device)
+    def update_critic(self, obs, actions, next_obs, terminals, rewards):
+        # compute conservative loss
+        conservative_loss_1, conservative_loss_2 = self.compute_conservative_loss(obs, actions, next_obs)
 
         # update critic
         q1, q2 = self.critic1(obs, actions).flatten(), self.critic2(obs, actions).flatten()
@@ -135,31 +127,30 @@ class COMBOPolicy(SACPolicy, nn.Module):
                 self.critic1_old(next_obs, next_actions), self.critic2_old(next_obs, next_actions)
             )
             target_q = rewards.flatten() + self._gamma * (1 - terminals.flatten()) * next_q.flatten()
-        critic1_loss = ((q1 - target_q).pow(2)).mean()
+        critic1_td_loss = ((q1 - target_q).pow(2)).mean()
+        critic2_td_loss = ((q2 - target_q).pow(2)).mean()
+        critic1_loss = critic1_td_loss + conservative_loss_1
+        critic2_loss = critic2_td_loss + conservative_loss_2
         self.critic1_optim.zero_grad()
         critic1_loss.backward()
         self.critic1_optim.step()
-        critic2_loss = ((q2 - target_q).pow(2)).mean()
         self.critic2_optim.zero_grad()
         critic2_loss.backward()
         self.critic2_optim.step()
+        return critic1_loss, critic2_loss
 
-        # update actor
-        a, _ = self(obs, no_grad=False)
-        q1a, q2a = self.critic1(obs, a).flatten(), self.critic2(obs, a).flatten()
-        actor_loss = - torch.min(q1a, q2a).mean()
-        self.actor_optim.zero_grad()
-        actor_loss.backward()
-        self.actor_optim.step()
+    def learn(self, data):
+        obs, actions, next_obs, terminals, rewards = data["observations"], \
+            data["actions"], data["next_observations"], data["terminals"], data["rewards"]
+        
+        obs = torch.as_tensor(obs).to(self._device)
+        actions = torch.as_tensor(actions).to(self._device)
+        next_obs = torch.as_tensor(next_obs).to(self._device)
+        rewards = torch.as_tensor(rewards).to(self._device)
+        terminals = torch.as_tensor(terminals).to(self._device)
 
-        # if self._is_auto_alpha:
-        #     log_probs = log_probs.detach() + self._target_entropy
-        #     alpha_loss = -(self._log_alpha * log_probs).mean()
-        #     self._alpha_optim.zero_grad()
-        #     alpha_loss.backward()
-        #     self._alpha_optim.step()
-        #     self._alpha = self._log_alpha.detach().exp()
-
+        critic1_loss, critic2_loss = self.update_critic(obs, actions, next_obs, terminals, rewards)
+        actor_loss = self.update_actor(obs)
         self._sync_weight()
 
         result =  {

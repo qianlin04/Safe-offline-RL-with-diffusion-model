@@ -61,7 +61,7 @@ render_config = utils.Config(
 )
 
 offline_buffer = replaybuffer_config(buffer_size=1)
-offline_buffer.load_dataset(dataset)
+offline_buffer.load_dataset(dataset, normalizer=args.normalizer)
 model_buffer = replaybuffer_config(buffer_size=args.rollout_batch_size*args.rollout_length*args.model_retain_epochs)
 dataset = dataset_config()
 renderer = render_config()
@@ -124,11 +124,12 @@ agent_config = utils.Config(
     to_device=args.device,
     device=args.device,
     action_space=env.action_space,
+    **args.agent_params,
 )
 
 
 trainer_config = utils.Config(
-    utils.PolicyTrainer,
+    utils.AgentTrainer,
     savepath=(args.savepath, 'trainer_config.pkl'),
     train_batch_size=args.batch_size,
     train_lr=args.learning_rate,
@@ -148,6 +149,7 @@ trainer_config = utils.Config(
     real_ratio=args.real_ratio,
     agent_batch_size=args.agent_batch_size,
     use_wandb=args.use_wandb,
+    warmup_step=args.warmup_step,
 )
 
 #-----------------------------------------------------------------------------#
@@ -186,6 +188,7 @@ n_epochs = int(args.n_train_steps // args.n_steps_per_epoch)
 for i in range(n_epochs):
     print(f'Epoch {i} / {n_epochs} | {args.savepath}')
     trainer.train(n_train_steps=args.n_steps_per_epoch)
-    eval_results = trainer.evaluate(env, eval_episodes=args.eval_episodes)
-    print(eval_results)
+    if trainer.step >= args.warmup_step:
+        eval_results = trainer.evaluate(env, eval_episodes=args.eval_episodes)
+        print(eval_results)
 

@@ -37,14 +37,6 @@ class CQLPolicy(SACPolicy, nn.Module):
         self.conservative_weight = conservative_weight
         self.n_action_samples = n_action_samples
 
-
-    def forward(self, obs, horizon=1, no_grad=True, deterministic=False):
-        cond = {0: torch.tensor(obs, device=self._device)}
-        samples = self.actor(cond, no_grad=no_grad, horizon=horizon, training=True)
-        trajectories = samples.trajectories
-        action = trajectories[:, 0, :self.action_dim]
-        return action, trajectories
-
     def sample_random_action(self, batch_size):
         if type(self.action_space) is Box:
             action = np.random.uniform(self.action_space.low, self.action_space.high, size=(batch_size, len(self.action_space.low)))
@@ -88,11 +80,6 @@ class CQLPolicy(SACPolicy, nn.Module):
 
         return policy_values_1, policy_values_2
 
-    def sample_action(self, obs, horizon=None, deterministic=False):
-        obs = np.expand_dims(obs, 0)
-        actions, trajectories = self(obs, horizon=horizon)
-        return actions[0].cpu().detach().numpy()
-
     def compute_conservative_loss(self, obs_t: torch.Tensor, act_t: torch.Tensor, obs_tp1: torch.Tensor):
         policy_values_t_1, policy_values_t_2 = self.compute_q_value(obs_t, obs_t)
         policy_values_tp1_1, policy_values_tp1_2 = self.compute_q_value(obs_tp1, obs_t)
@@ -120,16 +107,7 @@ class CQLPolicy(SACPolicy, nn.Module):
 
         return scaled_loss_1, scaled_loss_2
 
-    def learn(self, data):
-        obs, actions, next_obs, terminals, rewards = data["observations"], \
-            data["actions"], data["next_observations"], data["terminals"], data["rewards"]
-        
-        obs = torch.as_tensor(obs).to(self._device)
-        actions = torch.as_tensor(actions).to(self._device)
-        next_obs = torch.as_tensor(next_obs).to(self._device)
-        rewards = torch.as_tensor(rewards).to(self._device)
-        terminals = torch.as_tensor(terminals).to(self._device)
-
+    def update_critic(self, obs, actions, next_obs, terminals, rewards):
         # compute conservative loss
         conservative_loss_1, conservative_loss_2 = self.compute_conservative_loss(obs, actions, next_obs)
 
@@ -151,23 +129,20 @@ class CQLPolicy(SACPolicy, nn.Module):
         self.critic2_optim.zero_grad()
         critic2_loss.backward()
         self.critic2_optim.step()
+        return critic1_loss, critic2_loss
 
-        # update actor
-        a, _ = self(obs, no_grad=False)
-        q1a, q2a = self.critic1(obs, a).flatten(), self.critic2(obs, a).flatten()
-        actor_loss = - torch.min(q1a, q2a).mean()
-        self.actor_optim.zero_grad()
-        actor_loss.backward()
-        self.actor_optim.step()
+    def learn(self, data):
+        obs, actions, next_obs, terminals, rewards = data["observations"], \
+            data["actions"], data["next_observations"], data["terminals"], data["rewards"]
+        
+        obs = torch.as_tensor(obs).to(self._device)
+        actions = torch.as_tensor(actions).to(self._device)
+        next_obs = torch.as_tensor(next_obs).to(self._device)
+        rewards = torch.as_tensor(rewards).to(self._device)
+        terminals = torch.as_tensor(terminals).to(self._device)
 
-        # if self._is_auto_alpha:
-        #     log_probs = log_probs.detach() + self._target_entropy
-        #     alpha_loss = -(self._log_alpha * log_probs).mean()
-        #     self._alpha_optim.zero_grad()
-        #     alpha_loss.backward()
-        #     self._alpha_optim.step()
-        #     self._alpha = self._log_alpha.detach().exp()
-
+        critic1_loss, critic2_loss = self.update_critic(obs, actions, next_obs, terminals, rewards)
+        actor_loss = self.update_actor(obs)
         self._sync_weight()
 
         result =  {

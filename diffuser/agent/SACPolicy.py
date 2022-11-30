@@ -146,13 +146,7 @@ class SACPolicy(nn.Module):
         actions, trajectories = self(obs, horizon=horizon)
         return actions[0].cpu().detach().numpy()
 
-    def learn(self, data):
-        obs, actions, next_obs, terminals, rewards = data["observations"], \
-            data["actions"], data["next_observations"], data["terminals"], data["rewards"]
-        
-        rewards = torch.as_tensor(rewards).to(self._device)
-        terminals = torch.as_tensor(terminals).to(self._device)
-
+    def update_critic(self, obs, actions, next_obs, terminals, rewards):
         # update critic
         q1, q2 = self.critic1(obs, actions).flatten(), self.critic2(obs, actions).flatten()
         with torch.no_grad():
@@ -169,7 +163,9 @@ class SACPolicy(nn.Module):
         self.critic2_optim.zero_grad()
         critic2_loss.backward()
         self.critic2_optim.step()
+        return critic1_loss, critic2_loss
 
+    def update_actor(self, obs):
         # update actor
         a, _ = self(obs, no_grad=False)
         q1a, q2a = self.critic1(obs, a).flatten(), self.critic2(obs, a).flatten()
@@ -177,15 +173,20 @@ class SACPolicy(nn.Module):
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
+        return actor_loss
 
-        # if self._is_auto_alpha:
-        #     log_probs = log_probs.detach() + self._target_entropy
-        #     alpha_loss = -(self._log_alpha * log_probs).mean()
-        #     self._alpha_optim.zero_grad()
-        #     alpha_loss.backward()
-        #     self._alpha_optim.step()
-        #     self._alpha = self._log_alpha.detach().exp()
+    def learn(self, data):
+        obs, actions, next_obs, terminals, rewards = data["observations"], \
+            data["actions"], data["next_observations"], data["terminals"], data["rewards"]
+        
+        obs = torch.as_tensor(obs).to(self._device)
+        actions = torch.as_tensor(actions).to(self._device)
+        next_obs = torch.as_tensor(next_obs).to(self._device)
+        rewards = torch.as_tensor(rewards).to(self._device)
+        terminals = torch.as_tensor(terminals).to(self._device)
 
+        critic1_loss, critic2_loss = self.update_critic(obs, actions, next_obs, terminals, rewards)
+        actor_loss = self.update_actor(obs)
         self._sync_weight()
 
         result =  {

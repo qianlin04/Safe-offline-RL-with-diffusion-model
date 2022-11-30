@@ -1,5 +1,5 @@
 import numpy as np
-
+from diffuser.datasets.normalization import *
 
 class ReplayBuffer:
     def __init__(
@@ -25,6 +25,8 @@ class ReplayBuffer:
         self.rewards = np.zeros((self.max_size, 1), dtype=np.float32)
         self.terminals = np.zeros((self.max_size, 1), dtype=np.float32)
 
+        self.normalizers = None
+
     def add(self, obs, next_obs, action, reward, terminal):
         # Copy to avoid modification by reference
         self.observations[self.ptr] = np.array(obs).copy()
@@ -36,11 +38,22 @@ class ReplayBuffer:
         self.ptr = (self.ptr + 1) % self.max_size
         self.size = min(self.size + 1, self.max_size)
     
-    def load_dataset(self, dataset):
-        observations = np.array(dataset["observations"], dtype=self.obs_dtype)
-        next_observations = np.array(dataset["next_observations"], dtype=self.obs_dtype)
-        actions = np.array(dataset["actions"], dtype=self.action_dtype)
-        rewards = np.array(dataset["rewards"]).reshape(-1, 1)
+    def load_dataset(self, dataset, normalizer='GaussianNormalizer',):
+        if type(normalizer) == str:
+            normalizer = eval(normalizer)
+        self.normalizers = {}
+        self.normalizers['observation'] = normalizer(dataset["observations"])
+        self.normalizers['action'] = normalizer(dataset["actions"])
+        self.normalizers['reward'] = normalizer(dataset["rewards"])
+        observations = self.normalizers['observation'].normalize(dataset["observations"])
+        next_observations = self.normalizers['observation'].normalize(dataset["next_observations"])
+        actions = self.normalizers['action'].normalize(dataset["actions"])
+        rewards = self.normalizers['reward'].normalize(dataset["rewards"])
+
+        observations = np.array(observations, dtype=self.obs_dtype)
+        next_observations = np.array(next_observations, dtype=self.obs_dtype)
+        actions = np.array(actions, dtype=self.action_dtype)
+        rewards = np.array(rewards).reshape(-1, 1)
         terminals = np.array(dataset["terminals"], dtype=np.float32).reshape(-1, 1)
 
         self.observations = observations
@@ -51,6 +64,12 @@ class ReplayBuffer:
 
         self.ptr = len(observations)
         self.size = len(observations)
+
+    def unnormalize(self, x, key):
+        return self.normalizers[key].unnormalize(x) if self.normalizers is not None else x
+
+    def normalize(self, x, key):
+        return self.normalizers[key].normalize(x) if self.normalizers is not None else x
 
     def add_batch(self, obs, next_obs, actions, rewards, terminals):
         batch_size = len(obs)

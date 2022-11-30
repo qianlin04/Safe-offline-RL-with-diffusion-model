@@ -234,7 +234,7 @@ class Trainer(object):
 
 
 
-class PolicyTrainer(object):
+class AgentTrainer(object):
     def __init__(
         self,
         diffusion_model,
@@ -258,6 +258,7 @@ class PolicyTrainer(object):
         n_reference=8,
         bucket=None,
 
+        warmup_step=2e5,
         rollout_length=5,
         rollout_batch_size=50000,
         rollout_freq=1000,
@@ -299,6 +300,7 @@ class PolicyTrainer(object):
 
         self.reset_parameters()
         self.step = 0
+        self.warmup_step = warmup_step
         self.rollout_length = rollout_length
         self.rollout_batch_size = rollout_batch_size
         self.rollout_freq = rollout_freq
@@ -338,17 +340,17 @@ class PolicyTrainer(object):
             if nonterm_mask.sum() == 0:
                 break
 
-        for k, traj in enumerate(observations[:5]):
-            print('---------------------------------------')
-            o = np.zeros((4,12))
-            for i in range(self.rollout_length):
-                pos = np.argmax(traj[i, :])
-                o[ np.unravel_index(pos, o.shape)] = i+1
-                if terminals[k, i, 0]==True:
-                    o[ np.unravel_index(pos, o.shape)] = -1
-                    break
-            print(o)
-            print(-np.sort(-observations[k, :, :], axis=-1)[:,:3], -np.sort(-actions[k, :, :], axis=-1)[:, :3])
+        # for k, traj in enumerate(observations[:5]):
+        #     print('---------------------------------------')
+        #     o = np.zeros((4,12))
+        #     for i in range(self.rollout_length):
+        #         pos = np.argmax(traj[i, :])
+        #         o[ np.unravel_index(pos, o.shape)] = i+1
+        #         if terminals[k, i, 0]==True:
+        #             o[ np.unravel_index(pos, o.shape)] = -1
+        #             break
+        #     print(o)
+        #     print(-np.sort(-observations[k, :, :], axis=-1)[:,:3], -np.sort(-actions[k, :, :], axis=-1)[:, :3])
 
 
     def train_diffusion(self, ):
@@ -390,63 +392,63 @@ class PolicyTrainer(object):
         self.agent.train()
         timer = Timer()
         for step in range(n_train_steps):
-            if step % self.rollout_freq == 0:
-                self.rollout_transitions()
-
             loss = self.train_diffusion()
 
-            if step % self.train_policy_freq == 0:
+            if step % self.rollout_freq==0 and self.step>=self.warmup_step == 0:
+                self.rollout_transitions()
+
+            if step % self.train_policy_freq==0 and self.step>=self.warmup_step == 0:
                 self.train_policy()
             
-            if step%100==0:
-                print("--------------------------------")
-                qv = np.zeros((4,12))
-                qa = np.zeros((4,12))
-                policy_a = np.zeros((4,12,4))
-                dire = ['U', 'R', 'D', 'L'] #
-                for i in range(int(np.prod(qv.shape))):
-                    obs = torch.zeros((4, np.prod(qv.shape)), device="cuda")
-                    obs[:, i] = 1
-                    a = torch.eye(4, device="cuda")
-                    with torch.no_grad():
-                        q1a, q2a = self.agent.critic1_old(obs, a).flatten(), self.agent.critic2_old(obs, a).flatten()
-                        q = torch.min(q1a, q2a)
-                    a,b = np.unravel_index(i, qv.shape)
-                    qv[a, b]=q.max()
-                    qa[a, b]=q.argmax()
+            # if step%100==0:
+            #     print("--------------------------------")
+            #     qv = np.zeros((4,12))
+            #     qa = np.zeros((4,12))
+            #     policy_a = np.zeros((4,12,4))
+            #     dire = ['U', 'R', 'D', 'L'] #
+            #     for i in range(int(np.prod(qv.shape))):
+            #         obs = torch.zeros((4, np.prod(qv.shape)), device="cuda")
+            #         obs[:, i] = 1
+            #         a = torch.eye(4, device="cuda")
+            #         with torch.no_grad():
+            #             q1a, q2a = self.agent.critic1_old(obs, a).flatten(), self.agent.critic2_old(obs, a).flatten()
+            #             q = torch.min(q1a, q2a)
+            #         a,b = np.unravel_index(i, qv.shape)
+            #         qv[a, b]=q.max()
+            #         qa[a, b]=q.argmax()
 
-                    s = 256
-                    obs = torch.zeros((s, np.prod(qv.shape)), device="cuda")
-                    obs[:, i] = 1
-                    pa, _ = self.agent(obs, horizon=1)
-                    pa = pa.cpu().numpy()
-                    pa = np.argmax(pa, axis=-1)
-                    for j in range(4):
-                        policy_a[a, b, j] = np.sum(pa==j) / s
+            #         s = 256
+            #         obs = torch.zeros((s, np.prod(qv.shape)), device="cuda")
+            #         obs[:, i] = 1
+            #         pa, _ = self.agent(obs, horizon=1)
+            #         pa = pa.cpu().numpy()
+            #         pa = np.argmax(pa, axis=-1)
+            #         for j in range(4):
+            #             policy_a[a, b, j] = np.sum(pa==j) / s
 
-                print("q_table")
-                for i in range(4):
-                    p = " ".join([str(j)[:6] for j in qv[i]])
-                    print(p)
-                print("q_table_action")
-                for i in range(4):
-                    p = " ".join([dire[int(j)] for j in qa[i]])
-                    print(p)
-                print("policy_action")
-                for i in range(4):
-                    p = ""
-                    for a in policy_a[i]:
-                        for kk, k in enumerate(np.argsort(-a)[:2]):
-                            if kk!=0: p+=","
-                            if a[k]<0.1:
-                                p+="     "
-                            else:
-                                p+=dire[int(k)]+":%.1f" % a[k]
+            #     print("q_table")
+            #     for i in range(4):
+            #         p = " ".join([str(j)[:6] for j in qv[i]])
+            #         print(p)
+            #     print("q_table_action")
+            #     for i in range(4):
+            #         p = " ".join([dire[int(j)] for j in qa[i]])
+            #         print(p)
+            #     print("policy_action")
+            #     for i in range(4):
+            #         p = ""
+            #         for a in policy_a[i]:
+            #             for kk, k in enumerate(np.argsort(-a)[:2]):
+            #                 if kk!=0: p+=","
+            #                 if a[k]<0.1:
+            #                     p+="     "
+            #                 else:
+            #                     p+=dire[int(k)]+":%.1f" % a[k]
 
-                        p += " "
-                    print(p)
-                print("--------------------------------")
-                print()
+            #             p += " "
+            #         print(p)
+            #     print("--------------------------------")
+            #     print()
             
             if self.step % self.update_ema_every == 0:
                 self.step_ema()
@@ -470,7 +472,9 @@ class PolicyTrainer(object):
         episode_reward, episode_length = 0, 0
 
         while num_episodes < eval_episodes:
-            action = self.agent.sample_action(obs,)
+            normed_obs = self.offline_buffer.normalize(obs)
+            normed_action = self.agent.sample_action(normed_obs,)
+            action = self.offline_buffer.unnormalize(normed_action)
             next_obs, reward, terminal, _ = eval_env.step(action)
             episode_reward += reward
             episode_length += 1
@@ -478,18 +482,21 @@ class PolicyTrainer(object):
             obs = next_obs
 
             if terminal:
+                score = eval_env.get_normalized_score(episode_reward) if hasattr(eval_env, 'get_normalized_score') else 0
                 eval_ep_info_buffer.append(
-                    {"episode_reward": episode_reward, "episode_length": episode_length}
+                    {"episode_reward": episode_reward, "episode_length": episode_length, 'score': score}
                 )
-                num_episodes +=1
+                num_episodes += 1
                 episode_reward, episode_length = 0, 0
                 obs = eval_env.reset()
         
         if self.use_wandb:
+            wandb.log({"eval/score": np.mean([ep_info["score"] for ep_info in eval_ep_info_buffer])}, step=self.step)
             wandb.log({"eval/episode_reward": np.mean([ep_info["episode_reward"] for ep_info in eval_ep_info_buffer])}, step=self.step)
             wandb.log({"eval/episode_length": np.mean([ep_info["episode_length"] for ep_info in eval_ep_info_buffer])}, step=self.step)
 
         return {
+            "eval/score": [ep_info["score"] for ep_info in eval_ep_info_buffer],
             "eval/episode_reward": [ep_info["episode_reward"] for ep_info in eval_ep_info_buffer],
             "eval/episode_length": [ep_info["episode_length"] for ep_info in eval_ep_info_buffer]
         }
