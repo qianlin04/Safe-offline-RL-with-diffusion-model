@@ -124,6 +124,7 @@ agent_config = utils.Config(
     to_device=args.device,
     device=args.device,
     action_space=env.action_space,
+    action_normalizer=offline_buffer.normalizers['action'] if offline_buffer.normalizers is not None else None
     **args.agent_params,
 )
 
@@ -150,7 +151,6 @@ trainer_config = utils.Config(
     agent_batch_size=args.agent_batch_size,
     use_wandb=args.use_wandb,
     warmup_step=args.warmup_step,
-    action_normalizer=offline_buffer.normalizers['action'] if offline_buffer.normalizers is not None else None
 )
 
 #-----------------------------------------------------------------------------#

@@ -47,7 +47,7 @@ class SequenceDataset(torch.utils.data.Dataset):
         # shapes = {key: val.shape for key, val in self.fields.items()}
         # print(f'[ datasets/mujoco ] Dataset fields: {shapes}')
 
-    def normalize(self, keys=['observations', 'actions', 'rewards',]):
+    def normalize(self, keys=['observations', 'actions',]):
         '''
             normalize fields that will be predicted by the diffusion model
         '''
@@ -90,7 +90,7 @@ class SequenceDataset(torch.utils.data.Dataset):
         conditions = self.get_conditions(observations)
         if self.predict_reward_done:
             observations = np.concatenate([observations, 
-                            self.fields.normed_rewards[path_ind, start:end], self.fields.terminals[path_ind, start:end]], axis=-1)
+                            self.fields.rewards[path_ind, start:end], self.fields.terminals[path_ind, start:end]], axis=-1)
         trajectories = np.concatenate([actions, observations], axis=-1)
         batch = Batch(trajectories, conditions)
         return batch

@@ -129,9 +129,11 @@ class CQLPolicy(SACPolicy, nn.Module):
         critic2_loss = critic2_td_loss + conservative_loss_2
         self.critic1_optim.zero_grad()
         critic1_loss.backward()
+        nn.utils.clip_grad_norm_(self.critic1.parameters(), max_norm=20, norm_type=2)
         self.critic1_optim.step()
         self.critic2_optim.zero_grad()
         critic2_loss.backward()
+        nn.utils.clip_grad_norm_(self.critic2.parameters(), max_norm=20, norm_type=2)
         self.critic2_optim.step()
         return critic1_loss, critic2_loss
 

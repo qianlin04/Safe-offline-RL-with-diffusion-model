@@ -174,6 +174,7 @@ class SACPolicy(nn.Module):
         actor_loss = - torch.min(q1a, q2a).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
+        nn.utils.clip_grad_norm_(self.actor.policy_model.parameters(), max_norm=20, norm_type=2)
         self.actor_optim.step()
         return actor_loss
 
