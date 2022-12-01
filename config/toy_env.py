@@ -209,7 +209,8 @@ mycliffwalking_mix_v0 = {
 myroulette_random_v0 = {
     'diffusion': {
         'horizon': 4,
-        #'dim_mults': (1, ),
+        'dim_mults': (1, 2, 4),
+        'learning_rate': 2e-3,
     },
     'values': {
         'horizon': 4,

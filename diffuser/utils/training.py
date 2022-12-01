@@ -394,10 +394,10 @@ class AgentTrainer(object):
         for step in range(n_train_steps):
             loss = self.train_diffusion()
 
-            if step % self.rollout_freq==0 and self.step>=self.warmup_step == 0:
+            if step % self.rollout_freq==0 and self.step>=self.warmup_step:
                 self.rollout_transitions()
 
-            if step % self.train_policy_freq==0 and self.step>=self.warmup_step == 0:
+            if step % self.train_policy_freq==0 and self.step>=self.warmup_step:
                 self.train_policy()
             
             # if step%100==0:
@@ -450,14 +450,14 @@ class AgentTrainer(object):
             #     print("--------------------------------")
             #     print()
             
-            if self.step % self.update_ema_every == 0:
+            if (self.step+1) % self.update_ema_every == 0:
                 self.step_ema()
 
-            if self.step % self.save_freq == 0:
+            if (self.step+1) % self.save_freq == 0:
                 label = self.step // self.label_freq * self.label_freq
                 self.save(label)
 
-            if self.step % self.log_freq == 0:
+            if (self.step+1) % self.log_freq == 0:
                 #infos_str = ' | '.join([f'{key}: {val:8.4f}' for key, val in infos.items()])
                 print(f'{self.step}: {loss:8.4f} | t: {timer():8.4f}', flush=True)
 
@@ -472,9 +472,9 @@ class AgentTrainer(object):
         episode_reward, episode_length = 0, 0
 
         while num_episodes < eval_episodes:
-            normed_obs = self.offline_buffer.normalize(obs)
+            normed_obs = self.offline_buffer.normalize(obs, 'observation')
             normed_action = self.agent.sample_action(normed_obs,)
-            action = self.offline_buffer.unnormalize(normed_action)
+            action = self.offline_buffer.unnormalize(normed_action, 'action')
             next_obs, reward, terminal, _ = eval_env.step(action)
             episode_reward += reward
             episode_length += 1

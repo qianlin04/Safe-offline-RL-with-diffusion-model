@@ -53,7 +53,8 @@ class SACPolicy(nn.Module):
         tau=0.5, 
         gamma=0.99, 
         alpha=0.2,
-        to_device="cpu"
+        to_device="cpu",
+        action_normalizer=None,
     ):
         super().__init__()
 
@@ -90,6 +91,7 @@ class SACPolicy(nn.Module):
         
         self.__eps = np.finfo(np.float32).eps.item()
 
+        self.action_normalizer = action_normalizer
         self._device = to_device
 
     def load_actor(self, actor):

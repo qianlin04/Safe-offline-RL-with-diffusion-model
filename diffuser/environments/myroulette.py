@@ -14,7 +14,7 @@ class RouletteEnv(gym.Env):
 
     The last action (38) stops the rollout for a return of 0 (walking away)
     """
-    def __init__(self, spots=37, onehot=True, datatype=''):
+    def __init__(self, spots=5, onehot=True, datatype=''):
         self.datatype = datatype
         self.onehot = onehot
         self.n = spots + 1

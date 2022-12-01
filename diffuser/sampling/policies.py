@@ -48,8 +48,8 @@ class GuidedPolicy:
             rewards = self.normalizer.unnormalize(normed_rewards, 'rewards')
             terminals = self.normalizer.unnormalize(normed_terminals, 'terminals')
         else:
-            rewards = np.zeros(trajectories.shape[:-1]+[1])
-            terminals = np.zeros(trajectories.shape[:-1]+[1])
+            rewards = np.zeros(trajectories.shape[:-1]+(1,))
+            terminals = np.zeros(trajectories.shape[:-1]+(1,))
 
         trajectories = Trajectories(actions, observations, rewards, terminals, samples.values, samples.costs)
         return action, trajectories

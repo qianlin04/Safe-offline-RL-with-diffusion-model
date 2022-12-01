@@ -85,16 +85,20 @@ for _ in range(5):
         print(np.max(samples.observations, axis=-1), np.argmax(samples.observations, axis=-1))
         print(np.max(samples.actions, axis=-1), np.argmax(samples.actions, axis=-1))
 
-        env.render()
-        dire = ['U', 'R', 'D', 'L']
-        print("action:   ", dire[np.argmax(action)], np.max(action))
-        for k, traj in enumerate(samples.observations):
-            o = np.zeros((4,12))
-            for i in range(8):
-                pos = np.argmax(traj[i, :])
-                o[ np.unravel_index(pos, o.shape)] = i+1
-            print(o)
-            print("values:  ", samples.values[k])
+        # env.render()
+        # dire = ['U', 'R', 'D', 'L']
+        # print("action:   ", dire[np.argmax(action)], np.max(action))
+        # for k, traj in enumerate(samples.observations):
+        #     p = []
+        #     o = np.zeros((4,12))
+        #     for i in range(8):
+        #         pos = np.argmax(traj[i, :])
+        #         o[ np.unravel_index(pos, o.shape)] = i+1
+        #         p.append( np.unravel_index(pos, o.shape))
+        #     print(o)
+        #     print("values:  ", samples.values[k])
+        #     print(p)
+        #     print([dire[i] for i in np.argmax(samples.actions[k], axis=-1)])
         # input()
         assert 0
 

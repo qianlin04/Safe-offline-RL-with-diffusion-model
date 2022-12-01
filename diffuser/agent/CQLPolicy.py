@@ -20,7 +20,9 @@ class CQLPolicy(SACPolicy, nn.Module):
         alpha=0.2,
         to_device="cpu",
         conservative_weight=5.0,
-        n_action_samples=10
+        n_action_samples=10,
+        real_ratio=1.0,
+        action_normalizer=None,
     ):
         super().__init__(
             actor=actor, 
@@ -32,7 +34,8 @@ class CQLPolicy(SACPolicy, nn.Module):
             tau=tau, 
             gamma=gamma, 
             alpha=alpha,
-            to_device=to_device
+            to_device=to_device,
+            action_normalizer=action_normalizer,
         )
         self.conservative_weight = conservative_weight
         self.n_action_samples = n_action_samples
@@ -45,6 +48,7 @@ class CQLPolicy(SACPolicy, nn.Module):
         else:
             action = [self.action_space.sample() for _ in range(batch_size)]
             action = np.vstack(action)
+        action = self.action_normalizer.normalize(action)
         action = torch.as_tensor(action).to(self._device)
         return action
 

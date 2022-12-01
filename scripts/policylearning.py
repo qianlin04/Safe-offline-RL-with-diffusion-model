@@ -150,6 +150,7 @@ trainer_config = utils.Config(
     agent_batch_size=args.agent_batch_size,
     use_wandb=args.use_wandb,
     warmup_step=args.warmup_step,
+    action_normalizer=offline_buffer.normalizers['action'] if offline_buffer.normalizers is not None else None
 )
 
 #-----------------------------------------------------------------------------#
@@ -188,7 +189,6 @@ n_epochs = int(args.n_train_steps // args.n_steps_per_epoch)
 for i in range(n_epochs):
     print(f'Epoch {i} / {n_epochs} | {args.savepath}')
     trainer.train(n_train_steps=args.n_steps_per_epoch)
-    if trainer.step >= args.warmup_step:
-        eval_results = trainer.evaluate(env, eval_episodes=args.eval_episodes)
-        print(eval_results)
+    eval_results = trainer.evaluate(env, eval_episodes=args.eval_episodes)
+    print(eval_results)
 

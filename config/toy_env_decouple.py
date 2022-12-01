@@ -274,7 +274,7 @@ mycliffwalking_mix_v0 = {
         'predict_reward_done': True,
     },
     'plan': {
-        'diffusion_loadpath': 'f:decouple_policylearning/defaults_H{horizon}_T{n_diffusion_steps}',
+        #'diffusion_loadpath': 'f:decouple_policylearning/defaults_H{horizon}_T{n_diffusion_steps}',
     }, 
     'policylearning': {
         'load_epoch': 790000,
