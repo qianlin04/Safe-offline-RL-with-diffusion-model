@@ -207,9 +207,14 @@ base = {
         'agent_algo': 'COMBOPolicy',
         'agent': 'f:agent.{agent_algo}',
         'agent_params': {
-            'conservative_weight': 5.0,
-            'n_action_samples': 10,
-            'real_ratio': 0.05,
+            'COMBOPolicy': {
+                'conservative_weight': 1.0,
+                'n_action_samples': 10,
+            },
+            'CQLPolicy': {
+                'conservative_weight': 5.0,
+                'n_action_samples': 10,
+            },
         },
         'horizon': 32,
         'n_diffusion_steps': 20,
@@ -241,8 +246,8 @@ base = {
         'n_train_steps': 1e6,
         'batch_size': 32,
         'learning_rate': 2e-4,
-        'actor_learning_rate': 2e-4,
-        'critic_learning_rate': 2e-4,
+        'actor_learning_rate': 1e-5,
+        'critic_learning_rate': 3e-4,
         'gradient_accumulate_every': 2,
         'ema_decay': 0.995,
         'save_freq': 20000,

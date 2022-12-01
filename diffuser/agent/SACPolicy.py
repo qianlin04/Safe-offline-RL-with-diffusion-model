@@ -55,6 +55,7 @@ class SACPolicy(nn.Module):
         alpha=0.2,
         to_device="cpu",
         action_normalizer=None,
+        real_ratio=1.0,
     ):
         super().__init__()
 
@@ -115,7 +116,7 @@ class SACPolicy(nn.Module):
             o.data.copy_(o.data * (1.0 - self._tau) + n.data * self._tau)
 
     def forward(self, obs, horizon=1, no_grad=True, deterministic=False):
-        cond = {0: torch.tensor(obs, device=self._device)}
+        cond = {0: torch.tensor(obs, device=self._device).clone()}
         samples = self.actor(cond, no_grad=no_grad, horizon=horizon, training=True)
         trajectories = samples.trajectories
         action = trajectories[:, 0, :self.action_dim]
@@ -174,7 +175,7 @@ class SACPolicy(nn.Module):
         actor_loss = - torch.min(q1a, q2a).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
-        nn.utils.clip_grad_norm_(self.actor.policy_model.parameters(), max_norm=20, norm_type=2)
+        nn.utils.clip_grad_norm_(self.actor.policy_model.parameters(), max_norm=10, norm_type=2)
         self.actor_optim.step()
         return actor_loss
 

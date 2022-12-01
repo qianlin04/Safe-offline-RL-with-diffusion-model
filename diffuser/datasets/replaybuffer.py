@@ -44,16 +44,14 @@ class ReplayBuffer:
         self.normalizers = {}
         self.normalizers['observation'] = normalizer(dataset["observations"])
         self.normalizers['action'] = normalizer(dataset["actions"])
-        self.normalizers['reward'] = normalizer(dataset["rewards"])
         observations = self.normalizers['observation'].normalize(dataset["observations"])
         next_observations = self.normalizers['observation'].normalize(dataset["next_observations"])
         actions = self.normalizers['action'].normalize(dataset["actions"])
-        rewards = self.normalizers['reward'].normalize(dataset["rewards"])
 
         observations = np.array(observations, dtype=self.obs_dtype)
         next_observations = np.array(next_observations, dtype=self.obs_dtype)
         actions = np.array(actions, dtype=self.action_dtype)
-        rewards = np.array(rewards).reshape(-1, 1)
+        rewards = np.array(dataset['rewards']).reshape(-1, 1)
         terminals = np.array(dataset["terminals"], dtype=np.float32).reshape(-1, 1)
 
         self.observations = observations

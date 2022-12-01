@@ -354,6 +354,7 @@ class AgentTrainer(object):
 
 
     def train_diffusion(self, ):
+        self.optimizer.zero_grad()
         for i in range(self.gradient_accumulate_every):
             batch = next(self.dataloader)
             batch = batch_to_device(batch)
@@ -365,7 +366,6 @@ class AgentTrainer(object):
             loss = loss / self.gradient_accumulate_every
             loss.backward()
         self.optimizer.step()
-        self.optimizer.zero_grad()
         return loss.cpu().item()
 
     def train_policy(self,):
@@ -397,7 +397,7 @@ class AgentTrainer(object):
             if step % self.rollout_freq==0 and self.step>=self.warmup_step:
                 self.rollout_transitions()
 
-            if step % self.train_policy_freq==0 and self.step>=self.warmup_step:
+            if step % self.train_policy_freq==0 and self.step>=self.warmup_step and self.model_buffer.size>=self.agent_batch_size:
                 self.train_policy()
             
             # if step%100==0:
@@ -450,18 +450,18 @@ class AgentTrainer(object):
             #     print("--------------------------------")
             #     print()
             
-            if (self.step+1) % self.update_ema_every == 0:
+            if self.step % self.update_ema_every == 0:
                 self.step_ema()
 
-            if (self.step+1) % self.save_freq == 0:
-                label = self.step // self.label_freq * self.label_freq
-                self.save(label)
-
-            if (self.step+1) % self.log_freq == 0:
+            if self.step % self.log_freq == 0:
                 #infos_str = ' | '.join([f'{key}: {val:8.4f}' for key, val in infos.items()])
                 print(f'{self.step}: {loss:8.4f} | t: {timer():8.4f}', flush=True)
 
             self.step += 1
+
+            if self.step % self.save_freq == 0:
+                label = (self.step-1) // self.label_freq * self.label_freq
+                self.save(label)
         #print("mean loss : ", np.mean(total_loss))
 
     def evaluate(self, eval_env, eval_episodes=10):

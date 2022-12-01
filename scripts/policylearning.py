@@ -124,8 +124,9 @@ agent_config = utils.Config(
     to_device=args.device,
     device=args.device,
     action_space=env.action_space,
-    action_normalizer=offline_buffer.normalizers['action'] if offline_buffer.normalizers is not None else None
-    **args.agent_params,
+    action_normalizer=offline_buffer.normalizers['action'] if offline_buffer.normalizers is not None else None,
+    real_ratio=args.real_ratio,
+    **args.agent_params[args.agent_algo],
 )
 
 
@@ -165,7 +166,7 @@ utils.report_parameters(policy_model)
 agent = agent_config(diffusion)
 
 trainer = trainer_config(diffusion, dataset, renderer, agent, offline_buffer, model_buffer)
-if hasattr(args, 'load_epoch') and args.load_epoch:
+if hasattr(args, 'load_epoch') and args.load_epoch is not None:
     trainer.load(args.load_epoch)
 
 #-----------------------------------------------------------------------------#
