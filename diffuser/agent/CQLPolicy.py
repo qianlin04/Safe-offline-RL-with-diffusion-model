@@ -129,36 +129,10 @@ class CQLPolicy(SACPolicy, nn.Module):
         critic2_loss = critic2_td_loss + conservative_loss_2
         self.critic1_optim.zero_grad()
         critic1_loss.backward()
-        nn.utils.clip_grad_norm_(self.critic1.parameters(), max_norm=20, norm_type=2)
+        #nn.utils.clip_grad_norm_(self.critic1.parameters(), max_norm=20, norm_type=2)
         self.critic1_optim.step()
         self.critic2_optim.zero_grad()
         critic2_loss.backward()
-        nn.utils.clip_grad_norm_(self.critic2.parameters(), max_norm=20, norm_type=2)
+        #nn.utils.clip_grad_norm_(self.critic2.parameters(), max_norm=20, norm_type=2)
         self.critic2_optim.step()
         return critic1_loss, critic2_loss
-
-    def learn(self, data):
-        obs, actions, next_obs, terminals, rewards = data["observations"], \
-            data["actions"], data["next_observations"], data["terminals"], data["rewards"]
-        
-        obs = torch.as_tensor(obs).to(self._device)
-        actions = torch.as_tensor(actions).to(self._device)
-        next_obs = torch.as_tensor(next_obs).to(self._device)
-        rewards = torch.as_tensor(rewards).to(self._device)
-        terminals = torch.as_tensor(terminals).to(self._device)
-
-        critic1_loss, critic2_loss = self.update_critic(obs, actions, next_obs, terminals, rewards)
-        actor_loss = self.update_actor(obs)
-        self._sync_weight()
-
-        result =  {
-            "loss/actor": actor_loss.item(),
-            "loss/critic1": critic1_loss.item(),
-            "loss/critic2": critic2_loss.item()
-        }
-
-        # if self._is_auto_alpha:
-        #     result["loss/alpha"] = alpha_loss.item()
-        #     result["alpha"] = self._alpha.item()
-        
-        return result

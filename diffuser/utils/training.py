@@ -393,7 +393,7 @@ class AgentTrainer(object):
         timer = Timer()
         for step in range(n_train_steps):
             loss = self.train_diffusion()
-
+  
             if step % self.rollout_freq==0 and self.step>=self.warmup_step:
                 self.rollout_transitions()
 

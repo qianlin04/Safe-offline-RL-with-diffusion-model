@@ -215,6 +215,9 @@ base = {
                 'conservative_weight': 5.0,
                 'n_action_samples': 10,
             },
+            'SACPolicy': {
+                
+            }
         },
         'horizon': 32,
         'n_diffusion_steps': 20,
