@@ -502,6 +502,10 @@ class PolicyDynamicDiffusion(nn.Module):
         else:
             loss, info = self.loss_fn(x_recon, x_start)
 
+        info['action_recon'] = action_recon
+        info['state_recon'] = state_recon
+        info['time'] = t
+
         return loss, info
 
     def loss(self, x, *args):

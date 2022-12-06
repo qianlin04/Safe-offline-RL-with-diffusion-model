@@ -12,7 +12,7 @@ import diffuser.utils as utils
 class Parser(utils.Parser):
     dataset: str = 'walker2d-medium-replay-v2'
     config: str = 'config.locomotion'
-    n_test_episode: int = 5
+    n_test_episode: int = 10
 
 args = Parser().parse_args('plan')
 
@@ -107,8 +107,8 @@ for _ in range(args.n_test_episode):
         ## execute action in environment
         next_observation, reward, terminal, _ = env.step(action)
         
-        import numpy as np
-        print("action:  ", np.argmax(action), "state:  ", np.max(action))
+        # import numpy as np
+        # print("action:  ", np.argmax(action), "state:  ", np.max(action))
         # env.render()
         # dire = ['U', 'R', 'D', 'L']
         # print("action:   ", dire[np.argmax(action)], np.max(action))

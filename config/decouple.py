@@ -272,6 +272,7 @@ base = {
         'load_epoch': None,
         'train_policy_freq': 1, 
         'warmup_step': 2e5,
+        'actor_loss_weight': 0.001,
 
         'use_wandb': True,
         'group': 'default',

@@ -152,6 +152,7 @@ trainer_config = utils.Config(
     agent_batch_size=args.agent_batch_size,
     use_wandb=args.use_wandb,
     warmup_step=args.warmup_step,
+    actor_loss_weight=args.actor_loss_weight,
 )
 
 #-----------------------------------------------------------------------------#

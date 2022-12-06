@@ -6,6 +6,7 @@ import einops
 import pdb
 import wandb
 
+import time
 from .arrays import batch_to_device, to_np, to_device, apply_dict
 from .timer import Timer
 from .cloud import sync_logs
@@ -266,6 +267,7 @@ class AgentTrainer(object):
         real_ratio=0.05,
         agent_batch_size=256,
         use_wandb=False,
+        actor_loss_weight=10.0,
     ):
         super().__init__()
         self.model = diffusion_model
@@ -308,6 +310,7 @@ class AgentTrainer(object):
         self.agent_batch_size = agent_batch_size
         self.train_policy_freq = train_policy_freq
         self.use_wandb = use_wandb
+        self.actor_loss_weight = actor_loss_weight
 
     def reset_parameters(self):
         self.ema_model.load_state_dict(self.model.state_dict())
@@ -358,13 +361,36 @@ class AgentTrainer(object):
         for i in range(self.gradient_accumulate_every):
             batch = next(self.dataloader)
             batch = batch_to_device(batch)
-            loss, infos = self.model.loss(*batch)
+            
+            recon_loss, infos = self.model.loss(*batch)
+
+            # cal actor loss
+            oa_dim = self.model.action_dim+self.model.observation_dim
+            observation_start = batch[0][:, :, self.model.action_dim:oa_dim]
+            obs = observation_start.reshape(-1, self.model.observation_dim)
+            action = infos['action_recon'].reshape(-1, self.model.action_dim)
+            q1a, q2a = self.agent.compute_qvalue(obs, action)
+            actor_loss = - torch.min(q1a, q2a).mean()
+
+            loss = recon_loss + self.actor_loss_weight * actor_loss
+            
             if self.use_wandb:
-                wandb.log({"loss/diffusion/loss": loss.cpu().item()}, step=self.step) 
+                wandb.log({"loss/diffusion/loss": recon_loss.cpu().item()}, step=self.step) 
+                wandb.log({"loss/diffusion/actor_loss": actor_loss.cpu().item()}, step=self.step) 
                 for k, v in infos.items():
                     wandb.log({f"loss/diffusion/{k}": v}, step=self.step) 
             loss = loss / self.gradient_accumulate_every
             loss.backward()
+
+            # update critic
+            observations = batch[0][:, :-1, self.model.action_dim:oa_dim].reshape(-1, self.model.observation_dim).detach()
+            actions = batch[0][:, :-1, :self.model.action_dim].reshape(-1, self.model.action).detach()
+            next_observations = batch[0][:, 1:, self.model.action_dim:oa_dim].reshape(-1, self.model.observation_dim).detach()
+            next_actions = infos['action_recon'][:, 1:].reshape(-1, self.model.action).detach()
+            rewards = batch[0][:, :-1, oa_dim].reshape(-1, 1).detach()
+            dones = batch[0][:, :-1, oa_dim+1].reshape(-1, 1).detach()
+            
+
         self.optimizer.step()
         return loss.cpu().item()
 
@@ -383,7 +409,7 @@ class AgentTrainer(object):
         }
         results = self.agent.learn(data)
         if self.use_wandb:
-            wandb.log({"loss/actor": results["loss/actor"]}, step=self.step)
+            #wandb.log({"loss/actor": results["loss/actor"]}, step=self.step)
             wandb.log({"loss/critic1": results["loss/critic1"]}, step=self.step)
             wandb.log({"loss/critic2": results["loss/critic2"]}, step=self.step)
         return results

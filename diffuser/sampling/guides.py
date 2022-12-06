@@ -10,7 +10,7 @@ class ValueGuide(nn.Module):
         self.model = model
 
     def forward(self, x, cond, t, **kargs):
-        output = self.model(x, cond, t, **kargs)
+        output = self.model(x[:, :, 0:self.model.transition_dim], cond, t, **kargs)
         return output.squeeze(dim=-1)
 
     def gradients(self, x, *args, **kargs):

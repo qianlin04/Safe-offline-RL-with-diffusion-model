@@ -3,6 +3,10 @@ import torch
 import torch.nn as nn
 
 from copy import deepcopy
+from diffuser.models.helpers import (
+    SinusoidalPosEmb,
+)
+
 
 class MLP(nn.Module):
     def __init__(self, input_dim, hidden_dims, output_dim=None, activation=nn.ReLU):
@@ -21,21 +25,51 @@ class MLP(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-class Critic(nn.Module):
-    def __init__(self, input_dim, hidden_dims, output_dim=None, activation=nn.ReLU, device="cpu"):
+
+class MLP_time(nn.Module):
+    def __init__(self, input_dim, hidden_dims, time_dim=32, output_dim=None, activation=nn.ReLU):
         super().__init__()
-        backbone = MLP(input_dim, hidden_dims, output_dim=output_dim, activation=activation)
+        hidden_dims = [input_dim] + list(hidden_dims)
+        self.model = nn.ModuleList([])
+        for in_dim, out_dim in zip(hidden_dims[:-1], hidden_dims[1:]):
+            self.model.append(nn.Linear(in_dim+time_dim, out_dim+time_dim), activation())
+        
+        self.output_dim = hidden_dims[-1]+time_dim
+        if output_dim is not None:
+            self.model.append(nn.Linear(hidden_dims[-1], output_dim))
+            self.output_dim = output_dim
+        self.time_mlp = nn.Sequential(
+            SinusoidalPosEmb(hidden_dims),
+            nn.Linear(hidden_dims, hidden_dims*4),
+            nn.Mish(),
+            nn.Linear(hidden_dims*4, hidden_dims),
+        )
+    
+    def forward(self, x, time):
+        t = self.time_mlp(time)
+        for layer in self.model:
+            x = layer(torch.cat([x, t], -1))
+        return x
+
+class Critic(nn.Module):
+    def __init__(self, input_dim, hidden_dims, with_time_input=False, output_dim=None, activation=nn.ReLU, device="cpu"):
+        super().__init__()
+        self.with_time_input = with_time_input
+        if with_time_input:
+            backbone = MLP_time(input_dim, hidden_dims, output_dim=output_dim, activation=activation)
+        else:
+            backbone = MLP(input_dim, hidden_dims, output_dim=output_dim, activation=activation)
         self.device = torch.device(device)
         self.backbone = backbone.to(device)
         latent_dim = getattr(backbone, "output_dim")
         self.last = nn.Linear(latent_dim, 1).to(device)
 
-    def forward(self, obs, actions=None):
+    def forward(self, obs, actions=None, time=None):
         obs = torch.as_tensor(obs, device=self.device, dtype=torch.float32)
         if actions is not None:
             actions = torch.as_tensor(actions, device=self.device, dtype=torch.float32).flatten(1)
             obs = torch.cat([obs, actions], dim=1)
-        logits = self.backbone(obs)
+        logits = self.backbone(obs, time) if self.with_time_input else self.backbone(obs)
         values = self.last(logits)
         return values
 
@@ -64,9 +98,9 @@ class SACPolicy(nn.Module):
         self.observation_dim = actor.observation_dim
         self.actor = actor
         self.actor_lr = actor_lr
-        critic1 = Critic(input_dim=critic_input_dim, hidden_dims=critic_hidden_dims, device=to_device)
+        critic1 = Critic(input_dim=critic_input_dim, hidden_dims=critic_hidden_dims, device=to_device, with_time_input=True)
         actor_optim = torch.optim.Adam(actor.policy_model.parameters(), lr=actor_lr)
-        critic2 = Critic(input_dim=critic_input_dim, hidden_dims=critic_hidden_dims, device=to_device)
+        critic2 = Critic(input_dim=critic_input_dim, hidden_dims=critic_hidden_dims, device=to_device, with_time_input=True)
         critic1_optim = torch.optim.Adam(critic1.parameters(), lr=critic_lr)
         critic2_optim = torch.optim.Adam(critic2.parameters(), lr=critic_lr)
 
@@ -149,6 +183,9 @@ class SACPolicy(nn.Module):
         actions, trajectories = self(obs, horizon=horizon)
         return actions[0].cpu().detach().numpy()
 
+    def compute_qvalue(self, obs, action):
+        return self.critic1(obs, action).flatten(), self.critic2(obs, action).flatten()
+
     def update_critic(self, obs, actions, next_obs, terminals, rewards):
         # update critic
         q1, q2 = self.critic1(obs, actions).flatten(), self.critic2(obs, actions).flatten()
@@ -179,6 +216,37 @@ class SACPolicy(nn.Module):
         self.actor_optim.step()
         return actor_loss
 
+    def learn_critic(self, obs, actions, next_obs, next_actions, terminals, rewards, time):
+        obs = torch.as_tensor(obs).to(self._device)
+        actions = torch.as_tensor(actions).to(self._device)
+        next_obs = torch.as_tensor(next_obs).to(self._device)
+        next_actions = torch.as_tensor(next_actions).to(self._device)
+        rewards = torch.as_tensor(rewards).to(self._device)
+        terminals = torch.as_tensor(terminals).to(self._device)
+
+        # update critic
+        q1, q2 = self.critic1(obs, actions, time).flatten(), self.critic2(obs, actions, time).flatten()
+        next_q = torch.min(
+            self.critic1_old(next_obs, next_actions, time), self.critic2_old(next_obs, next_actions, time)
+        )
+        target_q = rewards.flatten() + self._gamma * (1 - terminals.flatten()) * next_q.flatten()
+        critic1_loss = ((q1 - target_q).pow(2)).mean()
+        self.critic1_optim.zero_grad()
+        critic1_loss.backward()
+        self.critic1_optim.step()
+        critic2_loss = ((q2 - target_q).pow(2)).mean()
+        self.critic2_optim.zero_grad()
+        critic2_loss.backward()
+        self.critic2_optim.step()
+        self._sync_weight()
+
+        result =  {
+            #"loss/actor": actor_loss.item(),
+            "loss/critic1": critic1_loss.item(),
+            "loss/critic2": critic2_loss.item()
+        }
+        return result
+
     def learn(self, data):
         obs, actions, next_obs, terminals, rewards = data["observations"], \
             data["actions"], data["next_observations"], data["terminals"], data["rewards"]
@@ -189,17 +257,12 @@ class SACPolicy(nn.Module):
         rewards = torch.as_tensor(rewards).to(self._device)
         terminals = torch.as_tensor(terminals).to(self._device)
 
-        import time
-        x=time.time()
         critic1_loss, critic2_loss = self.update_critic(obs, actions, next_obs, terminals, rewards)
-        print("critic: ", time.time()-x)
-        x=time.time()
-        actor_loss = self.update_actor(obs)
-        print("actor: ", time.time()-x)
+        #actor_loss = self.update_actor(obs)
         self._sync_weight()
 
         result =  {
-            "loss/actor": actor_loss.item(),
+            #"loss/actor": actor_loss.item(),
             "loss/critic1": critic1_loss.item(),
             "loss/critic2": critic2_loss.item()
         }
