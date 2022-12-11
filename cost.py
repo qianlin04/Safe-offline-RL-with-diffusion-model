@@ -1,5 +1,14 @@
 import numpy as np
 
+MAX_COST_THRESHOLD = {
+    'hopper-medium-v2': None,
+    'walker2d-medium-v2': 159.512,
+    'halfcheetah-medium-v2': 414.008,
+    'hopper-medium-replay-v2': 139.884,
+    'walker2d-medium-replay-v2': 160.251,
+    'halfcheetah-medium-replay-v2': 384.375,
+}
+
 def eval_cost(history, cost_func_name="vel_cost", is_single_step=False, binarization_threshold=None):
     observation, action, next_observation, reward, terminal, info = history[-1]
     if cost_func_name=="vel_cost":
@@ -11,6 +20,19 @@ def eval_cost(history, cost_func_name="vel_cost", is_single_step=False, binariza
     # if not is_single_step:
     #     cost_threshold = (remain_cost - cost * (discount ** t))
     return cost
+
+def eval_cost_from_env(env, history, cost_func_name="vel_cost"):
+    if cost_func_name=="vel_cost":
+        if len(history)==0:
+            history.append(env.sim.data.qpos[0])
+            return 0
+        x_position_before = history[-1]
+        history.append(env.sim.data.qpos[0])
+        x_position_after = history[-1]
+        x_velocity = (x_position_after - x_position_before) / env.dt
+        return np.abs(x_velocity)
+    else:
+        assert 0
 
 def action_cost(start, field, is_single_step=False, env_name = "hopper", binarization_threshold=None): #constraint with abs(action)
     actions = field['actions'][start:]

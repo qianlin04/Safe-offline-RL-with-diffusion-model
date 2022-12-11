@@ -183,7 +183,7 @@ base = {
         'discount': 0.997,
 
         ## loading
-        'diffusion_loadpath': 'f:decouple_diffusion_casual_sync/defaults_H{horizon}_T{n_diffusion_steps}',
+        'diffusion_loadpath': 'f:decouple_diffusion_casual/defaults_H{horizon}_T{n_diffusion_steps}',
         'value_loadpath': 'f:values/defaults_H{horizon}_T{n_diffusion_steps}_d{discount}',
         'cost_value_loadpath': 'f:vel_cost_values/decouple_H{horizon}_T{n_diffusion_steps}_d{discount}',
 

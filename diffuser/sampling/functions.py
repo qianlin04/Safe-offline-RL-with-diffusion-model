@@ -81,7 +81,7 @@ def n_step_guided_and_constrained_p_sample(
     model_std = torch.exp(0.5 * model_log_variance)
     model_var = torch.exp(model_log_variance)
 
-    for _ in range(n_guide_steps):
+    for k in range(n_guide_steps):
         
         with torch.enable_grad():
             cost_y, cost_grad = cost_guide.gradients(x, cond, t)
@@ -91,10 +91,17 @@ def n_step_guided_and_constrained_p_sample(
         
         #grad = r_grad - (cost_y.unsqueeze(-1).unsqueeze(-1).expand_as(cost_grad) > cost_threshold) * cost_grad * cost_grad_weight
 
-        grad = torch.where(cost_y.unsqueeze(-1).unsqueeze(-1).expand_as(r_grad) > cost_threshold, -cost_grad*cost_grad_weight, r_grad)
+        #step_ratio = (model.n_timesteps - t[0]) / model.n_timesteps
+        c_weight = torch.abs(cost_y-cost_threshold) / cost_threshold
+        c_weight = cost_grad_weight * c_weight.clamp(0, 1.0).exp().unsqueeze(-1).unsqueeze(-1).expand_as(r_grad)
+
+        #print(torch.abs(cost_y-cost_threshold) / cost_threshold)
+
+        grad = torch.where(cost_y.unsqueeze(-1).unsqueeze(-1).expand_as(r_grad) > cost_threshold, -cost_grad*c_weight, r_grad)
         #grad = r_grad
         #print(cost_y)
-        print(torch.sum(cost_y>cost_threshold).cpu().item(), end=" " if t[0].cpu().item()>0 else "\n")
+        #print(torch.sum(cost_y>cost_threshold).cpu().item(), end=" " if t[0].cpu().item()>0 else "\n")
+        #print("t=", t[0].cpu().item(), torch.sum(cost_y>cost_threshold).cpu().item(), cost_y.mean().cpu().item(), cost_y[:5].detach().cpu().numpy())
 
         if scale_grad_by_std:
             grad = model_var * grad
@@ -105,6 +112,11 @@ def n_step_guided_and_constrained_p_sample(
 
         x = x + scale * grad
         x = apply_conditioning(x, cond, model.action_dim)
+
+        # if cost_y.mean() < cost_threshold and k>=1:
+        #     break
+
+    print(torch.sum(cost_y>cost_threshold).cpu().item(), end=" " if t[0].cpu().item()>0 else "\n\n")
 
     if torch.sum(cost_y<=cost_threshold).cpu().item()==0: #if all trajectory break the constraint, select one with minimum cost 
         r_y = -cost_y                                           

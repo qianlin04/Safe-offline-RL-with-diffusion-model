@@ -43,9 +43,8 @@ class GuidedPolicy:
         observations = self.normalizer.unnormalize(normed_observations, 'observations')
         
         if trajectories.shape[-1] > tran_dim:
-            normed_rewards = trajectories[:, :, tran_dim:tran_dim+1]
+            rewards = trajectories[:, :, tran_dim:tran_dim+1]
             normed_terminals = trajectories[:, :, tran_dim+1:tran_dim+2]
-            rewards = self.normalizer.unnormalize(normed_rewards, 'rewards')
             terminals = self.normalizer.unnormalize(normed_terminals, 'terminals')
         else:
             rewards = np.zeros(trajectories.shape[:-1]+(1,))

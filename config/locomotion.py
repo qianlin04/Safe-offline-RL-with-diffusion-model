@@ -117,7 +117,7 @@ base = {
 
         ## value-specific kwargs
         'discount': 0.997,
-        'termination_penalty': 1000,
+        'termination_penalty': 100,
         'normed': False,
 
         ## dataset
@@ -185,7 +185,7 @@ base = {
         'value_loadpath': 'f:values/defaults_H{horizon}_T{n_diffusion_steps}_d{discount}',
         'cost_value_loadpath': 'f:vel_cost_values/defaults_H{horizon}_T{n_diffusion_steps}_d{discount}',
 
-        'cost_grad_weight': 10.0,
+        'cost_grad_weight': 5.0,
 
         'diffusion_epoch': 'latest',
         'value_epoch': 'latest',

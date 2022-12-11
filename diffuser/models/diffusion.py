@@ -504,7 +504,6 @@ class PolicyDynamicDiffusion(nn.Module):
 
         info['action_recon'] = action_recon
         info['state_recon'] = state_recon
-        info['time'] = t
 
         return loss, info
 

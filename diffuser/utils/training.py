@@ -535,7 +535,8 @@ class AgentTrainer(object):
         data = {
             'step': self.step,
             'model': self.model.state_dict(),
-            'ema': self.ema_model.state_dict()
+            'ema': self.ema_model.state_dict(),
+            'agent': self.agent,
         }
         savepath = os.path.join(self.logdir, f'state_{epoch}.pt')
         torch.save(data, savepath)
@@ -553,6 +554,7 @@ class AgentTrainer(object):
         self.step = data['step']
         self.model.load_state_dict(data['model'])
         self.ema_model.load_state_dict(data['ema'])
+        self.agent = data['agent']
         if self.agent is not None: 
             self.agent.load_actor(self.model)
 
