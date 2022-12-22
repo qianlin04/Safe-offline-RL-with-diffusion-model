@@ -54,6 +54,24 @@ TOY_ENVIRONMENT_SPECS = (
         'max_episode_steps' :200,
         'reward_threshold': 0.99,
     },
+    {
+        'id': 'SafePendulum-v0',
+        'entry_point': ('diffuser.environments.single_pendulum:SafePendulumEnv'),
+        'kwargs': {},
+        'max_episode_steps':200,
+    },
+    {
+        'id': 'SafeDoublePendulum-v0',
+        'entry_point': ('diffuser.environments.double_pendulum:SafeDoublePendulumEnv'),
+        'kwargs': {},
+        'max_episode_steps':200,
+    },
+    {
+        'id': 'SafeReacher-v0',
+        'entry_point': ('diffuser.environments.reacher:SafeReacherEnv'),
+        'kwargs': {},
+        'max_episode_steps':50,
+    },
 )
 
 def register_environments():
@@ -75,7 +93,7 @@ def register_environments():
             for datatype in ['random', 'medium-replay', 'medium', 'mix']:
                 env = copy.deepcopy(environment)
                 env['id'] = '-'.join([env_id, datatype, ver_id])
-                env['kwargs']['datatype'] = datatype
+                env['kwargs']['dataset_name'] = datatype
                 gym.register(**env)
 
         return gym_ids

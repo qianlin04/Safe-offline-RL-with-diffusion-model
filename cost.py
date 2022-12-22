@@ -1,12 +1,15 @@
 import numpy as np
 
 MAX_COST_THRESHOLD = {
-    'hopper-medium-v2': None,
+    'hopper-medium-v2': 129.940,
     'walker2d-medium-v2': 159.512,
     'halfcheetah-medium-v2': 414.008,
     'hopper-medium-replay-v2': 139.884,
     'walker2d-medium-replay-v2': 160.251,
     'halfcheetah-medium-replay-v2': 384.375,
+    'hopper-medium-expert-v2': 168.918,
+    'walker2d-medium-expert-v2': 234.076,
+    'halfcheetah-medium-expert-v2': 730.746,
 }
 
 def eval_cost(history, cost_func_name="vel_cost", is_single_step=False, binarization_threshold=None):
@@ -74,6 +77,10 @@ def vel_cost(start, field, is_single_step=False, env_name = "hopper", binarizati
         x_velocity[1:] = 0
     cost = np.abs(x_velocity)[:, np.newaxis]
     return cost
+
+# def pendulum_cost(start, field, is_single_step=False, env_name = "hopper", binarization_threshold=None):
+#     states, actions, next_states = field['states'][start:, :], field['actions'][start:, :], field['next_states'][start:, :]
+
 
 def healthy_cost(start, field, is_single_step=False, env_name = "hopper"):
     healthy_param = {

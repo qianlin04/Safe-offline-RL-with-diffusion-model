@@ -2,9 +2,6 @@ import diffuser.utils as utils
 import pdb
 from cost import action_cost, qvel_cost, vel_cost, healthy_cost
 
-import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
-
 #-----------------------------------------------------------------------------#
 #----------------------------------- setup -----------------------------------#
 #-----------------------------------------------------------------------------#

@@ -30,7 +30,7 @@ base = {
         'predict_epsilon': False,
         'dim_mults': (1, 2, 4, 8),
         'attention': False,
-        'renderer': 'utils.MuJoCoRenderer',
+        'renderer': None,
 
         ## dataset
         'loader': 'datasets.SequenceDataset',
@@ -38,7 +38,7 @@ base = {
         'preprocess_fns': [],
         'clip_denoised': False,
         'use_padding': True,
-        'max_path_length': 1000,
+        'max_path_length': 200,
 
         ## serialization
         'logbase': logbase,
@@ -48,7 +48,7 @@ base = {
         ## training
         'n_steps_per_epoch': 10000,
         'loss_type': 'l2',
-        'n_train_steps': 1e6,
+        'n_train_steps': 1e5,
         'batch_size': 32,
         'learning_rate': 2e-4,
         'gradient_accumulate_every': 2,
@@ -70,11 +70,11 @@ base = {
         'horizon': 32,
         'n_diffusion_steps': 20,
         'dim_mults': (1, 2, 4, 8),
-        'renderer': 'utils.MuJoCoRenderer',
+        'renderer': None,
 
         ## value-specific kwargs
-        'discount': 0.997,
-        'termination_penalty': -100,
+        'discount': 0.99,
+        'termination_penalty': 0,
         'normed': False,
 
         ## dataset
@@ -82,7 +82,7 @@ base = {
         'normalizer': 'GaussianNormalizer',
         'preprocess_fns': [],
         'use_padding': True,
-        'max_path_length': 1000,
+        'max_path_length': 200,
 
         ## serialization
         'logbase': logbase,
@@ -113,11 +113,11 @@ base = {
         'horizon': 32,
         'n_diffusion_steps': 20,
         'dim_mults': (1, 2, 4, 8),
-        'renderer': 'utils.MuJoCoRenderer',
+        'renderer': None,
 
         ## value-specific kwargs
-        'discount': 0.997,
-        'termination_penalty': 100,
+        'discount': 0.99,
+        'termination_penalty': 0,
         'normed': False,
 
         ## dataset
@@ -125,7 +125,7 @@ base = {
         'normalizer': 'GaussianNormalizer',
         'preprocess_fns': [],
         'use_padding': True,
-        'max_path_length': 1000,
+        'max_path_length': 200,
 
         ## serialization
         'logbase': logbase,
@@ -153,8 +153,8 @@ base = {
     'plan': {
         'guide': 'sampling.ValueGuide',
         'policy': 'sampling.GuidedPolicy',
-        'max_episode_length': 1000,
-        'batch_size': 64,
+        'max_episode_length': 200,
+        'batch_size': 128,
         'preprocess_fns': [],
         'device': 'cuda',
         'seed': None,
@@ -173,21 +173,19 @@ base = {
         'vis_freq': 100,
         'max_render': 8,
 
-        'plan_horizon': None,
-
         ## diffusion model
         'horizon': 32,
         'n_diffusion_steps': 20,
 
         ## value function
-        'discount': 0.997,
+        'discount': 0.99,
 
         ## loading
         'diffusion_loadpath': 'f:diffusion/defaults_H{horizon}_T{n_diffusion_steps}',
         'value_loadpath': 'f:values/defaults_H{horizon}_T{n_diffusion_steps}_d{discount}',
         'cost_value_loadpath': 'f:vel_cost_values/defaults_H{horizon}_T{n_diffusion_steps}_d{discount}',
 
-        'cost_grad_weight': 5.0,
+        'cost_grad_weight': 20.0,
 
         'diffusion_epoch': 'latest',
         'value_epoch': 'latest',
@@ -204,31 +202,17 @@ base = {
 
 #------------------------ overrides ------------------------#
 
-hopper_medium_expert_v2 = {
-    'plan': {
-        'scale': 0.0001,
-        't_stopgrad': 4,
-    },
-}
-
-
-halfcheetah_medium_replay_v2 = halfcheetah_medium_v2 = halfcheetah_medium_expert_v2 = {
+SafeReacher_v0 = {
     'diffusion': {
-        'horizon': 4,
-        'dim_mults': (1, 4, 8),
-        'attention': True,
+        'max_path_length':50, 
     },
     'values': {
-        'horizon': 4,
-        'dim_mults': (1, 4, 8),
+        'max_path_length':50, 
     },
     'plan': {
-        'horizon': 4,
-        'scale': 0.001,
-        't_stopgrad': 4,
+        'max_path_length':50, 
     },
     'cost_values': {
-        'horizon': 4,
-        'dim_mults': (1, 4, 8),
+        'max_episode_length': 50,
     },
 }

@@ -6,8 +6,20 @@ import diffuser.utils as utils
 
 import numpy as np
 import os
-from stable_baselines3 import DQN
+from stable_baselines3 import DQN, SAC
 os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+from stable_baselines3.common.callbacks import BaseCallback
+
+
+class CustomCallback(BaseCallback):
+    def __init__(self, infos_buffer, verbose=0, ):
+        super(CustomCallback, self).__init__(verbose)
+        self.infos_buffer = infos_buffer
+
+    def _on_step(self) -> bool:
+        self.infos_buffer.append(self.locals['infos'])
+        return True
+
 
 #-----------------------------------------------------------------------------#
 #----------------------------------- setup -----------------------------------#
@@ -17,7 +29,7 @@ class Parser(utils.Parser):
     dataset: str = 'mycliffwalking-v0'
     datatype: str = 'random'
     total_step: int = 1000000
-    idx2onehot: int = 1
+    idx2onehot: int = 0
     model1 : str = None
     model2 : str = None
     mix_sample_p : str = None
@@ -25,24 +37,31 @@ class Parser(utils.Parser):
     #config: str = 'config.locomotion'
 
 args = Parser().parse_args()
-env = gym.make(args.dataset, onehot=False)
+env = gym.make(args.dataset, mode='train')
 dataset = {'actions': [], 'observations': [], 'rewards': [], 'terminals': [], 'timeouts': []}
+infos_buffer = []
+collect_infos_callback = CustomCallback(infos_buffer)
 
 if args.datatype == 'medium-replay':
     # model = DQN("MlpPolicy", env, verbose=0, buffer_size=args.total_step, train_freq=1, gradient_steps=1, target_update_interval=5,
     #             exploration_initial_eps=1.0, exploration_final_eps=0.1,
     #             exploration_fraction=1.0, learning_rate=0.0001, gamma=0.95, batch_size=512, learning_starts=args.total_step//20)
-    model = DQN("MlpPolicy", env, verbose=0, buffer_size=args.total_step, exploration_initial_eps=1.0, exploration_final_eps=0.1, learning_rate=0.001,
-                train_freq=1, gradient_steps=1,
-                exploration_fraction=0.8, batch_size=512, learning_starts=args.total_step//20, target_update_interval=10)
-    model.learn(total_timesteps=args.total_step, log_interval=4)
+    # model = DQN("MlpPolicy", env, verbose=0, buffer_size=args.total_step, exploration_initial_eps=1.0, exploration_final_eps=0.1, learning_rate=0.001,
+    #             train_freq=1, gradient_steps=1,
+    #             exploration_fraction=0.8, batch_size=512, learning_starts=args.total_step//20, target_update_interval=10)
+    model = SAC("MlpPolicy", env, verbose=1, learning_rate=1e-3, buffer_size=args.total_step)
+    model.learn(total_timesteps=args.total_step, log_interval=5, callback=collect_infos_callback)
     model.save(f"./dataset/{args.dataset}.agent")
-    dataset['actions'] = model.replay_buffer.actions.squeeze(-1)
-    dataset['observations'] = model.replay_buffer.observations.squeeze(-1)
+    dataset['actions'] = model.replay_buffer.actions.squeeze(1)
+    dataset['observations'] = model.replay_buffer.observations.squeeze(1)
     dataset['rewards'] = model.replay_buffer.rewards.squeeze(-1)
     dataset['terminals'] = model.replay_buffer.dones.squeeze(-1)
     dataset['timeouts'] = model.replay_buffer.timeouts.squeeze(-1)
     dataset['terminals'] = np.logical_and(dataset['terminals'], 1-dataset['timeouts'])
+    if 'cost' in infos_buffer[0][0]:
+        dataset['costs'] = np.array([info[0]['cost'] for info in infos_buffer])
+        print(dataset['costs'].shape)
+        assert len(dataset['costs'])==dataset['actions'].shape[0]
 
 elif args.datatype == 'random' or args.datatype == 'medium' or args.datatype == 'mix':
     if args.datatype == 'medium' or args.datatype == 'mix': 

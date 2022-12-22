@@ -4,10 +4,8 @@ import diffuser.sampling as sampling
 import diffuser.utils as utils
 from cost import *
 import wandb
-
 import numpy as np
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 
 #-----------------------------------------------------------------------------#
 #----------------------------------- setup -----------------------------------#
@@ -21,9 +19,12 @@ class Parser(utils.Parser):
     ratio_of_maxthreshold: float = None
     n_test_episode: int = 10
     use_wandb: int = True
+    gpu_id: str = '0'
 
 args = Parser().parse_args('plan')
+os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
+print(args.dataset, args.ratio_of_maxthreshold)
 if args.cost_threshold is None:
     if args.ratio_of_maxthreshold is None:
         args.cost_threshold = np.inf
@@ -161,11 +162,12 @@ for n_test_episode in range(args.n_test_episode):
 
         ## format current observation for conditioning
         if args.test_cost_with_discount:
-            cost_threshold = remain_cost / (args.discount**(t) * (1-args.discount**(args.max_episode_length-t)))
+            cost_threshold = remain_cost / (args.discount**(t)) #* (1-args.discount**(args.max_episode_length-t)))
         else:
             cost_threshold = remain_cost / ((args.max_episode_length-t) * (1-args.discount))
         conditions = {0: observation}
-        action, samples = policy(conditions, batch_size=args.batch_size, verbose=args.verbose, cost_threshold=cost_threshold)
+        action, samples = policy(conditions, batch_size=args.batch_size, verbose=args.verbose,
+                                 cost_threshold=cost_threshold, plan_horizon=args.plan_horizon)
 
         ## execute action in environment
         next_observation, reward, terminal, info = env.step(action)

@@ -155,7 +155,10 @@ class ValueDataset(SequenceDataset):
         else:
             field = {k:v[path_ind] for k, v in self.fields.items()}
             field['path_lengths'] = self.fields['path_lengths'][path_ind]
-            costs = self.cost_func(start, field)
+            if 'costs' in self.fields._dict:
+                costs = self.fields['costs'][path_ind, start:]
+            else:
+                costs = self.cost_func(start, field)
             if field['terminals'].any() and self.termination_penalty is not None:
                 assert not field['timeouts'].any(), 'Penalized a timeout episode for early termination'
                 costs[field['path_lengths'] - 1 - start] += self.termination_penalty

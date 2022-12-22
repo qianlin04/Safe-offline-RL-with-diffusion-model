@@ -22,13 +22,13 @@ class GuidedPolicy:
         self.preprocess_fn = get_policy_preprocess_fn(preprocess_fns)
         self.sample_kwargs = sample_kwargs
 
-    def __call__(self, conditions, batch_size=1, verbose=True, cost_threshold=None):
+    def __call__(self, conditions, batch_size=1, verbose=True, cost_threshold=None, plan_horizon=None):
         conditions = {k: self.preprocess_fn(v) for k, v in conditions.items()}
         conditions = self._format_conditions(conditions, batch_size)
 
         ## run reverse diffusion process
         if cost_threshold is not None: self.sample_kwargs['cost_threshold'] = cost_threshold        #change the cost threshold dynamically
-        samples = self.diffusion_model(conditions, guide=self.guide, verbose=verbose, **self.sample_kwargs)
+        samples = self.diffusion_model(conditions, guide=self.guide, verbose=verbose, horizon=plan_horizon, **self.sample_kwargs)
         trajectories = utils.to_np(samples.trajectories)
 
         ## extract action [ batch_size x horizon x transition_dim ]
