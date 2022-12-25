@@ -92,12 +92,13 @@ def n_step_guided_and_constrained_p_sample(
         #grad = r_grad - (cost_y.unsqueeze(-1).unsqueeze(-1).expand_as(cost_grad) > cost_threshold) * cost_grad * cost_grad_weight
 
         #step_ratio = (model.n_timesteps - t[0]) / model.n_timesteps
-        #c_weight = (cost_y-cost_threshold) / cost_threshold
+        # c_weight = (cost_y-cost_threshold) / cost_threshold
+        # c_weight = cost_grad_weight * c_weight.clamp(0, 1.0).exp().unsqueeze(-1).unsqueeze(-1).expand_as(r_grad)
+        # grad = r_grad - (cost_grad*c_weight*(cost_y>cost_threshold).unsqueeze(-1).unsqueeze(-1).expand_as(r_grad))
+
         c_weight = cost_grad_weight * (cost_y>cost_threshold).unsqueeze(-1).unsqueeze(-1).expand_as(r_grad)
-
-        #print(torch.abs(cost_y-cost_threshold) / cost_threshold)
-
         grad = r_grad - (cost_grad*c_weight)
+
         #grad = torch.where(cost_y.unsqueeze(-1).unsqueeze(-1).expand_as(r_grad) > cost_threshold, -cost_grad*c_weight, r_grad)
         #grad = r_grad
         #print(scale, torch.sum(cost_y>cost_threshold).cpu().item(), t[0].cpu().item())

@@ -10,6 +10,26 @@ MAX_COST_THRESHOLD = {
     'hopper-medium-expert-v2': 168.918,
     'walker2d-medium-expert-v2': 234.076,
     'halfcheetah-medium-expert-v2': 730.746,
+
+    'SafePendulum-medium-replay-v0': 60,
+    'SafeDoublePendulum-medium-replay-v0': None,
+    'SafeReacher-medium-replay-v0': 14.29,
+}
+
+MAX_COST_DISCOUNT_THRESHOLD = {
+    'hopper-medium-v2': 129.940,
+    'walker2d-medium-v2': 159.512,
+    'halfcheetah-medium-v2': 414.008,
+    'hopper-medium-replay-v2': 139.884,
+    'walker2d-medium-replay-v2': 160.251,
+    'halfcheetah-medium-replay-v2': 384.375,
+    'hopper-medium-expert-v2': 168.918,
+    'walker2d-medium-expert-v2': 234.076,
+    'halfcheetah-medium-expert-v2': 730.746,
+
+    'SafePendulum-medium-replay-v0': 16.70,
+    'SafeDoublePendulum-medium-replay-v0': None,
+    'SafeReacher-medium-replay-v0': 10.84,
 }
 
 def eval_cost(history, cost_func_name="vel_cost", is_single_step=False, binarization_threshold=None):

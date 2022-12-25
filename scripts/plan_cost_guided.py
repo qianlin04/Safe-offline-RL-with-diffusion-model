@@ -32,6 +32,13 @@ if args.cost_threshold is None:
         args.cost_threshold = MAX_COST_THRESHOLD[args.dataset] * args.ratio_of_maxthreshold
 
 init_cost_threshold = args.cost_threshold # 1e6 #82.75 #1.5
+if not args.test_cost_with_discount:
+    if args.test_cost_with_fixed_length:
+        init_cost_threshold = init_cost_threshold * (1-args.discount**args.max_episode_length) \
+            / (1-args.discount) / args.max_episode_length
+    else:
+        init_cost_threshold = MAX_COST_DISCOUNT_THRESHOLD[args.dataset] * args.ratio_of_maxthreshold
+args.init_cost_threshold = init_cost_threshold
 
 def cost_func(*a, **kwargs):
     #kwargs['is_single_step'] = True
@@ -128,6 +135,7 @@ all_scores = []
 all_return = []
 all_episode_len = []
 all_total_cost = []
+all_discount_total_cost = []
 
 for n_test_episode in range(args.n_test_episode):
 
@@ -145,10 +153,12 @@ for n_test_episode in range(args.n_test_episode):
     n_single_step_break = 0
     total_reward = 0
     total_cost = 0
+    discount_total_cost = 0
 
     env = dataset.env
     observation = env.reset()
-    cost = eval_cost_from_env(env, history)
+    if not "Safe" in args.dataset:
+        cost = eval_cost_from_env(env, history)
 
     ## observations for rendering
     rollout = [observation.copy()]
@@ -161,41 +171,47 @@ for n_test_episode in range(args.n_test_episode):
         # state = env.state_vector().copy()
 
         ## format current observation for conditioning
-        if args.test_cost_with_discount:
-            cost_threshold = remain_cost / (args.discount**(t)) #* (1-args.discount**(args.max_episode_length-t)))
-        else:
-            cost_threshold = remain_cost / ((args.max_episode_length-t) * (1-args.discount))
+        cost_threshold = remain_cost / (args.discount**(t)) #* (1-args.discount**(args.max_episode_length-t)))
+
         conditions = {0: observation}
         action, samples = policy(conditions, batch_size=args.batch_size, verbose=args.verbose,
                                  cost_threshold=cost_threshold, plan_horizon=args.plan_horizon)
 
         ## execute action in environment
         next_observation, reward, terminal, info = env.step(action)
-        cost = eval_cost_from_env(env, history)
+        if 'cost' in info:
+            cost = info['cost']
+        else:
+            cost = eval_cost_from_env(env, history)
 
         ## print reward and score
         n_single_step_break += (cost > single_check_threshold)
         total_reward += reward
+        discount_total_cost += cost * (args.discount ** t)
         if args.test_cost_with_discount:
             total_cost += cost * (args.discount ** t)
         else:
             total_cost += cost
-        remain_cost = init_cost_threshold-total_cost
+        remain_cost = init_cost_threshold - discount_total_cost
 
-        score = env.get_normalized_score(total_reward)
+        score = env.get_normalized_score(total_reward) if hasattr(env, 'get_normalized_score') else 0
         
         if args.use_wandb:
             wandb.log({"score": score, 'time_step':t}) 
             wandb.log({"return": total_reward, 'time_step':t})
             wandb.log({"values": samples.values[0], 'time_step':t}) 
-            wandb.log({"normed_total_cost": total_cost/init_cost_threshold, 'time_step':t})
+            wandb.log({"normed_total_cost": total_cost/args.cost_threshold, 'time_step':t})
             wandb.log({"total_cost": total_cost, 'time_step':t}) 
+            wandb.log({"normed_discount_total_cost": discount_total_cost/init_cost_threshold, 'time_step':t})
+            wandb.log({"discount_total_cost": discount_total_cost, 'time_step':t}) 
             wandb.log({"cost_threshold": cost_threshold, 'time_step':t}) 
             wandb.log({"cost_values": samples.costs[0], 'time_step':t}) 
 
         print(
             f't: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | values: {samples.values[0]} | scale: {args.scale} | terminal: {terminal} \n'
-            f'cost: {cost:.2f} | normed_total_cost : {total_cost/init_cost_threshold:.2f} | total_cost : {total_cost:.2f} | cost_threshold : {cost_threshold:.2f} | cost_values: {samples.costs[0]} | n_single_break: {n_single_step_break} | '
+            f'cost: {cost:.2f} | normed_total_cost : {total_cost/args.cost_threshold:.2f} | total_cost : {total_cost:.2f} | '
+            f'normed_discount_total_cost : {discount_total_cost/init_cost_threshold:.2f} | discount_total_cost : {discount_total_cost:.2f} | '
+            f'cost_threshold : {cost_threshold:.2f} | cost_values: {samples.costs[0]} | n_single_break: {n_single_step_break} | '
             f'cost_func: {("single_" if is_single_step_constraint else "")+("bin_" if binarization_threshold is not None else "")+cost_func_name}',
             flush=True,
         )
@@ -215,52 +231,46 @@ for n_test_episode in range(args.n_test_episode):
     #logger.finish(t, score, total_reward, terminal, diffusion_experiment, value_experiment)
 
     print()
-    all_results.append(f't: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | values: {samples.values[0]} | scale: {args.scale} | '
-            f'cost: {cost:.2f} | normed_total_cost : {total_cost/init_cost_threshold:.2f} | total_cost : {total_cost:.2f} | cost_threshold : {cost_threshold:.2f} | cost_values: {samples.costs[0]} | n_single_break: {n_single_step_break} | '
-            f'cost_func: {("single_" if is_single_step_constraint else "")+("bin_" if binarization_threshold is not None else "")+cost_func_name}')
+    all_results.append(f't: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | values: {samples.values[0]} | scale: {args.scale} | terminal: {terminal} \n'
+            f'cost: {cost:.2f} | normed_total_cost : {total_cost/args.cost_threshold:.2f} | total_cost : {total_cost:.2f} | '
+            f'normed_discount_total_cost : {discount_total_cost/init_cost_threshold:.2f} | discount_total_cost : {discount_total_cost:.2f} | '
+            f'cost_threshold : {cost_threshold:.2f} | cost_values: {samples.costs[0]} | n_single_break: {n_single_step_break} | '
+            f'cost_func: {("single_" if is_single_step_constraint else "")+("bin_" if binarization_threshold is not None else "")+cost_func_name}'
+            )
     all_scores.append(score)
     all_total_cost.append(total_cost)
+    all_discount_total_cost.append(discount_total_cost)
     all_episode_len.append(t+1)
     all_return.append(total_reward)
-    all_normed_total_cost = np.array(all_total_cost)/init_cost_threshold
+    all_normed_total_cost = np.array(all_total_cost)/args.cost_threshold
+    all_normed_discount_total_cost = np.array(all_discount_total_cost)/init_cost_threshold
 
     for res in all_results:
         print(res)
     print("all scores:  ", all_scores)
     print("all normed total cost: ", all_normed_total_cost)
     print("all total cost: ", all_total_cost)
+    print("all normed discount total cost: ", all_normed_discount_total_cost)
+    print("all total discount cost: ", all_discount_total_cost)
     print("all return:  ", all_return)
     print("all episode len:  ", all_episode_len)
     import numpy as np
     print("mean scores:      ", np.mean(all_scores), np.std(all_scores))
     print("mean normed total cost:      ", np.mean(all_normed_total_cost), np.std(all_normed_total_cost))
     print("mean total cost:      ", np.mean(all_total_cost), np.std(all_total_cost))
+    print("mean normed discount total cost:      ", np.mean(all_normed_discount_total_cost), np.std(all_normed_discount_total_cost))
+    print("mean total discount cost:      ", np.mean(all_discount_total_cost), np.std(all_discount_total_cost))
     print("mean return:      ", np.mean(all_return), np.std(all_return))
     print("mean episode len:      ", np.mean(all_episode_len), np.std(all_episode_len))
 
     if args.use_wandb:
         wandb.log({'final/score': score, 'n_test_episode': n_test_episode})
-        wandb.log({"final/normed_total_cost": total_cost/init_cost_threshold, 'n_test_episode': n_test_episode}) 
+        wandb.log({"final/normed_total_cost": total_cost/args.cost_threshold, 'n_test_episode': n_test_episode}) 
         wandb.log({"final/total_cost": total_cost, 'n_test_episode': n_test_episode}) 
+        wandb.log({"final/normed_discount_total_cost": discount_total_cost/init_cost_threshold, 'n_test_episode': n_test_episode}) 
+        wandb.log({"final/discount_total_cost": discount_total_cost, 'n_test_episode': n_test_episode}) 
         wandb.log({"final/episode_len": t+1, 'n_test_episode': n_test_episode}) 
         wandb.log({"final/return": total_reward, 'n_test_episode': n_test_episode})
-
-        # wandb.log({"mean/scores": np.mean(all_scores), 'n_test_episode': n_test_episode})
-        # wandb.log({"mean/normed_total_cost": np.mean(all_normed_total_cost), 'n_test_episode': n_test_episode})
-        # wandb.log({"mean/total_cost": np.mean(all_total_cost), 'n_test_episode': n_test_episode})
-        # wandb.log({"mean/episode_len": np.mean(all_episode_len), 'n_test_episode': n_test_episode})
-        # wandb.log({"mean/return": np.mean(all_return), 'n_test_episode': n_test_episode})
-
-        # wandb.log({"std/scores": np.std(all_scores), 'n_test_episode': n_test_episode})
-        # wandb.log({"std/normed_total_cost": np.std(all_normed_total_cost), 'n_test_episode': n_test_episode})
-        # wandb.log({"std/total_cost": np.std(all_total_cost), 'n_test_episode': n_test_episode})
-        # wandb.log({"std/episode_len": np.std(all_episode_len), 'n_test_episode': n_test_episode})
-        # wandb.log({"std/return": np.std(all_return), 'n_test_episode': n_test_episode})
-
-        # data = [[w, x, y, z] for (w, x, y, z) in zip([init_cost_threshold]*len(all_total_cost), all_scores, all_normed_total_cost, all_total_cost)]
-        # table = wandb.Table(data=data, columns = ["cost_threshold", "score", "normed_total_cost", "total_cost"])
-        # wandb.log({"cost_table" : wandb.plot.scatter(table,
-        #                     "cost_threshold", "normed_total_cost")})
 
     if args.use_wandb:
         wandb.finish()

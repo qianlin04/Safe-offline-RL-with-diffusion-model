@@ -25,7 +25,7 @@ class CustomReacherEnv(ReacherEnv):
     """Custom reacher."""
     def __init__(
             self,
-            mode: str = "train",
+            mode: str = "test",
             dataset_name:str=None
         ):
         self.dataset_name = dataset_name

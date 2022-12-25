@@ -198,6 +198,7 @@ base = {
 
         'state_grad_mask': False,
         'test_cost_with_discount': True,
+        'test_cost_with_fixed_length': False,
     },
 }
 

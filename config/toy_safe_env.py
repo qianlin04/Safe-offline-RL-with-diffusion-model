@@ -173,6 +173,8 @@ base = {
         'vis_freq': 100,
         'max_render': 8,
 
+        'plan_horizon': None,
+
         ## diffusion model
         'horizon': 32,
         'n_diffusion_steps': 20,
@@ -195,24 +197,25 @@ base = {
         'suffix': '0',
 
         'state_grad_mask': False,
-        'test_cost_with_discount': True,
+        'test_cost_with_discount': False,
+        'test_cost_with_fixed_length': True,
     },
 }
 
 
 #------------------------ overrides ------------------------#
 
-SafeReacher_v0 = {
+SafeReacher_medium_replay_v0 = {
     'diffusion': {
         'max_path_length':50, 
     },
     'values': {
         'max_path_length':50, 
     },
-    'plan': {
+    'cost_values': {
         'max_path_length':50, 
     },
-    'cost_values': {
+    'plan': {
         'max_episode_length': 50,
     },
 }
