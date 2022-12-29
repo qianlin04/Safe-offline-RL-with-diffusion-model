@@ -48,7 +48,7 @@ base = {
         ## training
         'n_steps_per_epoch': 10000,
         'loss_type': 'l2',
-        'n_train_steps': 1e5,
+        'n_train_steps': 2e5,
         'batch_size': 32,
         'learning_rate': 2e-4,
         'gradient_accumulate_every': 2,
@@ -198,7 +198,7 @@ base = {
 
         'state_grad_mask': False,
         'test_cost_with_discount': False,
-        'test_cost_with_fixed_length': True,
+        'test_cost_with_fixed_length': False,
     },
 }
 

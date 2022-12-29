@@ -1,7 +1,7 @@
 cost_grad_weight=30
 batch_size=128
 seed=6
-gpu_id=0
+gpu_id=1
 value_loadpath="f:values/defaults_seed${seed}_H{horizon}_T{n_diffusion_steps}_d{discount}"
 cost_value_loadpath="f:vel_cost_values/defaults_seed${seed}_H{horizon}_T{n_diffusion_steps}_d{discount}"
 for ((i=$2; i<=$3; i=i+1 ))

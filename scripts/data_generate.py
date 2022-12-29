@@ -57,7 +57,7 @@ if args.datatype == 'medium-replay':
     dataset['rewards'] = model.replay_buffer.rewards.squeeze(-1)
     dataset['terminals'] = model.replay_buffer.dones.squeeze(-1)
     dataset['timeouts'] = model.replay_buffer.timeouts.squeeze(-1)
-    dataset['terminals'] = np.logical_and(dataset['terminals'], 1-dataset['timeouts'])
+    #dataset['terminals'] = np.logical_and(dataset['terminals'], 1-dataset['timeouts'])
     if 'cost' in infos_buffer[0][0]:
         dataset['costs'] = np.array([info[0]['cost'] for info in infos_buffer])
         print(dataset['costs'].shape)

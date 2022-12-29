@@ -29,7 +29,10 @@ if args.cost_threshold is None:
     if args.ratio_of_maxthreshold is None:
         args.cost_threshold = np.inf
     else:
-        args.cost_threshold = MAX_COST_THRESHOLD[args.dataset] * args.ratio_of_maxthreshold
+        if args.test_cost_with_discount:
+            args.cost_threshold = MAX_COST_DISCOUNT_THRESHOLD[args.dataset] * args.ratio_of_maxthreshold
+        else:
+            args.cost_threshold = MAX_COST_THRESHOLD[args.dataset] * args.ratio_of_maxthreshold
 
 init_cost_threshold = args.cost_threshold # 1e6 #82.75 #1.5
 if not args.test_cost_with_discount:
@@ -37,7 +40,7 @@ if not args.test_cost_with_discount:
         init_cost_threshold = init_cost_threshold * (1-args.discount**args.max_episode_length) \
             / (1-args.discount) / args.max_episode_length
     else:
-        init_cost_threshold = MAX_COST_DISCOUNT_THRESHOLD[args.dataset] * args.ratio_of_maxthreshold
+        init_cost_threshold = init_cost_threshold * THRESHOLD_RATIO[args.dataset] 
 args.init_cost_threshold = init_cost_threshold
 
 def cost_func(*a, **kwargs):

@@ -182,7 +182,7 @@ class ValueFunction(nn.Module):
             self.blocks.append(nn.ModuleList([
                 ResidualTemporalBlock(dim_in, dim_out, kernel_size=5, embed_dim=time_dim, horizon=horizon),
                 ResidualTemporalBlock(dim_out, dim_out, kernel_size=5, embed_dim=time_dim, horizon=horizon),
-                Downsample1d(dim_out)
+                Downsample1d(dim_out) if not is_last else nn.Identity() #dolts4444
             ]))
 
             if not is_last:
