@@ -1,5 +1,5 @@
 cost_grad_weight=30
-batch_size=128
+batch_size=64
 seed=6
 gpu_id=1
 value_loadpath="f:values/defaults_seed${seed}_H{horizon}_T{n_diffusion_steps}_d{discount}"
