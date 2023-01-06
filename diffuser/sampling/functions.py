@@ -74,7 +74,8 @@ def n_step_guided_p_sample_decouple(
 
 @torch.no_grad()
 def n_step_guided_and_constrained_p_sample(
-    model, x, cond, t, guide, scale=0.001, t_stopgrad=0, n_guide_steps=1, scale_grad_by_std=True, cost_guide = None, cost_threshold = 0, cost_grad_weight=1.0, state_grad_mask=False
+    model, x, cond, t, guide, scale=0.001, t_stopgrad=0, n_guide_steps=1, scale_grad_by_std=True, 
+    cost_guide = None, cost_threshold = 0, cost_grad_weight=1.0, state_grad_mask=False, guide_type=0
 ):
     assert cost_guide is not None
     model_log_variance = extract(model.posterior_log_variance_clipped, t, x.shape)
@@ -91,13 +92,14 @@ def n_step_guided_and_constrained_p_sample(
         
         #grad = r_grad - (cost_y.unsqueeze(-1).unsqueeze(-1).expand_as(cost_grad) > cost_threshold) * cost_grad * cost_grad_weight
 
+        if guide_type==0:
         #step_ratio = (model.n_timesteps - t[0]) / model.n_timesteps
-        # c_weight = (cost_y-cost_threshold) / cost_threshold
-        # c_weight = cost_grad_weight * c_weight.clamp(0, 1.0).exp().unsqueeze(-1).unsqueeze(-1).expand_as(r_grad)
-        # grad = r_grad - (cost_grad*c_weight*(cost_y>cost_threshold).unsqueeze(-1).unsqueeze(-1).expand_as(r_grad))
-
-        c_weight = cost_grad_weight * (cost_y>cost_threshold).unsqueeze(-1).unsqueeze(-1).expand_as(r_grad)
-        grad = r_grad - (cost_grad*c_weight)
+            c_weight = (cost_y-cost_threshold) / cost_threshold
+            c_weight = cost_grad_weight * c_weight.clamp(0, 1.0).exp().unsqueeze(-1).unsqueeze(-1).expand_as(r_grad)
+            grad = r_grad - (cost_grad*c_weight*(cost_y>cost_threshold).unsqueeze(-1).unsqueeze(-1).expand_as(r_grad))
+        elif guide_type==1:
+            c_weight = cost_grad_weight * (cost_y>cost_threshold).unsqueeze(-1).unsqueeze(-1).expand_as(r_grad)
+            grad = r_grad - (cost_grad*c_weight)
 
         #grad = torch.where(cost_y.unsqueeze(-1).unsqueeze(-1).expand_as(r_grad) > cost_threshold, -cost_grad*c_weight, r_grad)
         #grad = r_grad

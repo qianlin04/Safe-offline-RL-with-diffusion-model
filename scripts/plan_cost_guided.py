@@ -178,7 +178,7 @@ for n_test_episode in range(args.n_test_episode):
 
         conditions = {0: observation}
         action, samples = policy(conditions, batch_size=args.batch_size, verbose=args.verbose,
-                                 cost_threshold=cost_threshold, plan_horizon=args.plan_horizon)
+                                 cost_threshold=cost_threshold, plan_horizon=args.plan_horizon, guide_type=args.guide_type)
 
         ## execute action in environment
         next_observation, reward, terminal, info = env.step(action)
