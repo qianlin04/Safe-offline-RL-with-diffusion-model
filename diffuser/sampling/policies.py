@@ -23,12 +23,18 @@ class GuidedPolicy:
         self.sample_kwargs = sample_kwargs
 
     def __call__(self, conditions, batch_size=1, verbose=True, cost_threshold=None, plan_horizon=None):
+        sample_batch_size = None if len(conditions[0].shape) == 1 else conditions[0].shape[0]
+
         conditions = {k: self.preprocess_fn(v) for k, v in conditions.items()}
         conditions = self._format_conditions(conditions, batch_size)
 
         ## run reverse diffusion process
         if cost_threshold is not None: self.sample_kwargs['cost_threshold'] = cost_threshold        #change the cost threshold dynamically
-        samples = self.diffusion_model(conditions, guide=self.guide, verbose=verbose, horizon=plan_horizon, **self.sample_kwargs)
+        if hasattr(self.sample_kwargs['cost_threshold'], '__len__'):
+            self.sample_kwargs['cost_threshold'] = torch.tensor(self.sample_kwargs['cost_threshold']).repeat(batch_size).cuda()
+        else:
+            self.sample_kwargs['cost_threshold'] = torch.tensor([self.sample_kwargs['cost_threshold']]).repeat(batch_size).cuda()
+        samples = self.diffusion_model(conditions, guide=self.guide, verbose=verbose, horizon=plan_horizon, sample_batch_size=sample_batch_size, **self.sample_kwargs)
         trajectories = utils.to_np(samples.trajectories)
 
         ## extract action [ batch_size x horizon x transition_dim ]
@@ -36,7 +42,10 @@ class GuidedPolicy:
         actions = self.normalizer.unnormalize(actions, 'actions')
 
         ## extract first action
-        action = actions[0, 0]
+        if sample_batch_size is None:
+            action = actions[0, 0]
+        else:
+            action = actions[:, 0]
 
         tran_dim = self.action_dim+self.observation_dim
         normed_observations = trajectories[:, :, self.action_dim:tran_dim]
@@ -68,6 +77,7 @@ class GuidedPolicy:
         conditions = utils.apply_dict(
             einops.repeat,
             conditions,
-            'd -> repeat d', repeat=batch_size,
+            'd -> repeat d' if len(conditions[0].shape)==1 else 'd w -> (repeat d) w',   #dolts4444 
+            repeat=batch_size,
         )
         return conditions

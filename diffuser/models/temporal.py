@@ -73,6 +73,7 @@ class TemporalUnet(nn.Module):
             nn.Mish(),
             nn.Linear(dim * 4, dim),
         )
+        horizon_history = []
 
         self.downs = nn.ModuleList([])
         self.ups = nn.ModuleList([])
@@ -80,6 +81,7 @@ class TemporalUnet(nn.Module):
 
         print(in_out)
         for ind, (dim_in, dim_out) in enumerate(in_out):
+            horizon_history.append(horizon)
             is_last = ind >= (num_resolutions - 1)
 
             self.downs.append(nn.ModuleList([
@@ -90,7 +92,7 @@ class TemporalUnet(nn.Module):
             ]))
 
             if not is_last:
-                horizon = horizon // 2
+                horizon = max(horizon // 2, 1)
 
         mid_dim = dims[-1]
         self.mid_block1 = ResidualTemporalBlock(mid_dim, mid_dim, embed_dim=time_dim, horizon=horizon)
@@ -104,11 +106,11 @@ class TemporalUnet(nn.Module):
                 ResidualTemporalBlock(dim_out * 2, dim_in, embed_dim=time_dim, horizon=horizon),
                 ResidualTemporalBlock(dim_in, dim_in, embed_dim=time_dim, horizon=horizon),
                 Residual(PreNorm(dim_in, LinearAttention(dim_in))) if attention else nn.Identity(),
-                Upsample1d(dim_in) if not is_last else nn.Identity()
+                Upsample1d(dim_in) if not is_last and horizon_history[-(ind+1)]!=horizon_history[-(ind+2)] else nn.Identity()
             ]))
 
             if not is_last:
-                horizon = horizon * 2
+                horizon = horizon_history[-(ind+2)]
 
         self.final_conv = nn.Sequential(
             Conv1dBlock(dim, dim, kernel_size=5),
@@ -182,7 +184,7 @@ class ValueFunction(nn.Module):
             self.blocks.append(nn.ModuleList([
                 ResidualTemporalBlock(dim_in, dim_out, kernel_size=5, embed_dim=time_dim, horizon=horizon),
                 ResidualTemporalBlock(dim_out, dim_out, kernel_size=5, embed_dim=time_dim, horizon=horizon),
-                Downsample1d(dim_out) #if not is_last else nn.Identity() #dolts4444
+                Downsample1d(dim_out) # if not is_last else nn.Identity() #dolts4444
             ]))
 
             if not is_last:

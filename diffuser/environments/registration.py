@@ -72,6 +72,11 @@ TOY_ENVIRONMENT_SPECS = (
         'kwargs': {},
         'max_episode_steps':50,
     },
+    {
+        'id': 'ocpm-v0',
+        'entry_point': ('diffuser.environments.ocpm:OCPMEnv'),
+        'max_episode_steps':200,
+    },
 )
 
 def register_environments():

@@ -46,7 +46,7 @@ class CustomReacherEnv(ReacherEnv):
         vec = self.get_body_com("fingertip") - self.target_position
         reward_dist = -np.linalg.norm(vec)
         reward_ctrl = -np.square(action).sum()
-        print(reward_dist, reward_ctrl, self.get_body_com("fingertip"))
+        #print(reward_dist, reward_ctrl, self.get_body_com("fingertip"))
         reward = reward_dist + reward_ctrl        
         self.do_simulation(action, self.frame_skip)
         next_state = self._get_obs() # next state

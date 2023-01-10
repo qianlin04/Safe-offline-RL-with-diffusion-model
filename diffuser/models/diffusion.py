@@ -48,6 +48,19 @@ def sort_by_values(x, values, costs):
     costs = costs[inds]
     return x, values, costs
 
+def max_by_values_in_batch(x, values, costs, sample_batch_size):
+    batch_size=x.shape[0]
+    x=x.reshape(sample_batch_size, batch_size//sample_batch_size, x.shape[-2], x.shape[-1])
+    values=values.reshape(sample_batch_size, batch_size//sample_batch_size)
+    costs=costs.reshape(sample_batch_size, batch_size//sample_batch_size)
+    inds = torch.argmax(values, dim=1, keepdim=True)
+    
+    x=torch.gather(x, 1, inds.unsqueeze(-1).unsqueeze(-1).repeat(1,1,x.shape[-2],x.shape[-1])).squeeze(1)
+    values=torch.gather(values, 1, inds).squeeze(1)
+    costs=torch.gather(costs, 1, inds).squeeze(1)
+
+    return x, values, costs
+
 
 def make_timesteps(batch_size, i, device):
     t = torch.full((batch_size,), i, device=device, dtype=torch.long)
@@ -172,7 +185,7 @@ class GaussianDiffusion(nn.Module):
         return model_mean, posterior_variance, posterior_log_variance
 
     @torch.no_grad()
-    def p_sample_loop(self, shape, cond, verbose=True, return_chain=False, sample_fn=default_sample_fn, **sample_kwargs):
+    def p_sample_loop(self, shape, cond, verbose=True, return_chain=False, sample_fn=default_sample_fn, sample_batch_size=None, **sample_kwargs):
         device = self.betas.device
 
         batch_size = shape[0]
@@ -192,7 +205,10 @@ class GaussianDiffusion(nn.Module):
 
         progress.stamp()
 
-        x, values, costs = sort_by_values(x, values, costs)
+        if sample_batch_size is None:
+            x, values, costs = sort_by_values(x, values, costs)
+        else:
+            x, values, costs = max_by_values_in_batch(x, values, costs, sample_batch_size)
         if return_chain: chain = torch.stack(chain, dim=1)
         return Sample(x, values, costs, chain)
 

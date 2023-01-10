@@ -181,11 +181,12 @@ base = {
 
         ## value function
         'discount': 0.99,
+        'cost_discount': 0.99,
 
         ## loading
         'diffusion_loadpath': 'f:diffusion/defaults_H{horizon}_T{n_diffusion_steps}',
         'value_loadpath': 'f:values/defaults_H{horizon}_T{n_diffusion_steps}_d{discount}',
-        'cost_value_loadpath': 'f:vel_cost_values/defaults_H{horizon}_T{n_diffusion_steps}_d{discount}',
+        'cost_value_loadpath': 'f:vel_cost_values/defaults_H{horizon}_T{n_diffusion_steps}_d{cost_discount}',
 
         'cost_grad_weight': 20.0,
 
@@ -218,5 +219,22 @@ SafeReacher_medium_replay_v0 = {
     },
     'plan': {
         'max_episode_length': 50,
+    },
+}
+
+ocpm_v0 = {
+    'diffusion': {
+        'max_path_length':200, 
+        'n_train_steps': 2e5,
+    },
+    'values': {
+        'max_path_length':200, 
+    },
+    'cost_values': {
+        'max_path_length':200, 
+    },
+    'plan': {
+        'max_episode_length': 200,
+        'get_budget_from_env': True,
     },
 }

@@ -18,6 +18,9 @@ class SequenceDataset(torch.utils.data.Dataset):
     def __init__(self, env='hopper-medium-replay', horizon=64,
         normalizer='LimitsNormalizer', preprocess_fns=[], max_path_length=1000,
         max_n_episodes=10000, termination_penalty=0, use_padding=True, seed=None, predict_reward_done=False):
+
+        if 'ocpm' in env: max_n_episodes = 800000  #dotls4444
+
         self.preprocess_fn = get_preprocess_fn(preprocess_fns, env)
         self.env = env = load_environment(env)
         self.env.seed(seed)
@@ -160,7 +163,6 @@ class ValueDataset(SequenceDataset):
             else:
                 costs = self.cost_func(start, field)
             if field['terminals'].any() and self.termination_penalty is not None:
-                assert not field['timeouts'].any(), 'Penalized a timeout episode for early termination'
                 costs[field['path_lengths'] - 1 - start] += self.termination_penalty
             discounts = self.discounts[:len(costs)]
             value = (discounts * costs).sum()

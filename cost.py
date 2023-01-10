@@ -43,9 +43,11 @@ THRESHOLD_RATIO = {
     'walker2d-medium-expert-v2': 234/3945,
     'halfcheetah-medium-expert-v2': 710/11080,
 
-    'SafePendulum-medium-replay-v0': 16.70/60.44,
+    'SafePendulum-medium-replay-v0': 0.336,
     'SafeDoublePendulum-medium-replay-v0': None,
-    'SafeReacher-medium-replay-v0': 10.84/14.29,
+    'SafeReacher-medium-replay-v0': 0.728,
+
+    'ocpm-v0': 1.0, 
 }
 
 def eval_cost(history, cost_func_name="vel_cost", is_single_step=False, binarization_threshold=None):

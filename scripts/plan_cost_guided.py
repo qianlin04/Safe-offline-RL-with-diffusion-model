@@ -123,6 +123,7 @@ policy_config = utils.Config(
     scale_grad_by_std=args.scale_grad_by_std,
     state_grad_mask=args.state_grad_mask,
     verbose=False,
+    guide_type=args.guide_type
 )
 
 logger = logger_config()
@@ -160,7 +161,7 @@ for n_test_episode in range(args.n_test_episode):
 
     env = dataset.env
     observation = env.reset()
-    if not "Safe" in args.dataset:
+    if "v2" in args.dataset:
         cost = eval_cost_from_env(env, history)
 
     ## observations for rendering
@@ -175,10 +176,15 @@ for n_test_episode in range(args.n_test_episode):
 
         ## format current observation for conditioning
         cost_threshold = remain_cost / (args.discount**(t)) #* (1-args.discount**(args.max_episode_length-t)))
+        if hasattr(args, 'get_budget_from_env') and args.get_budget_from_env:
+            cost_threshold = env.get_budget()
 
         conditions = {0: observation}
         action, samples = policy(conditions, batch_size=args.batch_size, verbose=args.verbose,
-                                 cost_threshold=cost_threshold, plan_horizon=args.plan_horizon, guide_type=args.guide_type)
+                                 cost_threshold=cost_threshold, plan_horizon=args.plan_horizon,)
+
+        if hasattr(args, 'get_budget_from_env') and args.get_budget_from_env:
+            cost_threshold = 0
 
         ## execute action in environment
         next_observation, reward, terminal, info = env.step(action)
