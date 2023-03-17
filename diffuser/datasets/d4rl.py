@@ -40,6 +40,11 @@ def load_environment(name):
     return env
 
 def get_dataset(env):
+    if 'Safety' in env.spec.id:
+        import torch
+        dataset = torch.load(f'./dataset/{env.spec.id}_medium-replay.pkl')
+        return dataset
+
     dataset = env.get_dataset()
 
     if 'antmaze' in str(env).lower():
@@ -67,6 +72,7 @@ def sequence_dataset(env, preprocess_fn):
             rewards
             terminals
     """
+
     dataset = get_dataset(env)
     dataset = preprocess_fn(dataset)
 

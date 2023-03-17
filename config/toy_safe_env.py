@@ -201,6 +201,7 @@ base = {
         'test_cost_with_discount': False,
         'test_cost_with_fixed_length': False,
         'guide_type': 0,
+        'note': None, 
     },
 }
 

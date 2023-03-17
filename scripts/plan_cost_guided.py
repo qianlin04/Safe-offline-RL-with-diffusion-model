@@ -6,6 +6,7 @@ from cost import *
 import wandb
 import numpy as np
 import os
+import bullet_safety_gym
 
 #-----------------------------------------------------------------------------#
 #----------------------------------- setup -----------------------------------#
@@ -35,7 +36,7 @@ if args.cost_threshold is None:
             args.cost_threshold = MAX_COST_THRESHOLD[args.dataset] * args.ratio_of_maxthreshold
 
 init_cost_threshold = args.cost_threshold # 1e6 #82.75 #1.5
-if not args.test_cost_with_discount:
+if not args.test_cost_with_discount and args.discount!=1.0:
     if args.test_cost_with_fixed_length:
         init_cost_threshold = init_cost_threshold * (1-args.discount**args.max_episode_length) \
             / (1-args.discount) / args.max_episode_length

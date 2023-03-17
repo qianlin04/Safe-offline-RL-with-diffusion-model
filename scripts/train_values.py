@@ -13,7 +13,7 @@ class Parser(utils.Parser):
 args = Parser().parse_args('values')
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '3'
 
 #-----------------------------------------------------------------------------#
 #---------------------------------- dataset ----------------------------------#

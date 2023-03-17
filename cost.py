@@ -14,6 +14,10 @@ MAX_COST_THRESHOLD = {
     'SafePendulum-medium-replay-v0': 60,
     'SafeDoublePendulum-medium-replay-v0': None,
     'SafeReacher-medium-replay-v0': 14.29,
+
+    'SafetyCarCircle-v0': 150,
+    'SafetyAntRun-v0': 20,
+    'SafetyBallReach-v0': 100,
 }
 
 MAX_COST_DISCOUNT_THRESHOLD = {
@@ -30,6 +34,10 @@ MAX_COST_DISCOUNT_THRESHOLD = {
     'SafePendulum-medium-replay-v0': 16.70,
     'SafeDoublePendulum-medium-replay-v0': None,
     'SafeReacher-medium-replay-v0': 10.84,
+
+    'SafetyCarCircle-medium-replay-v0': 150,
+    'SafetyAntRun-medium-replay-v0': 150,
+    'SafetyBallReach-medium-replay-v0': 150,
 }
 
 THRESHOLD_RATIO = {

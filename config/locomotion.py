@@ -206,6 +206,84 @@ base = {
 
 #------------------------ overrides ------------------------#
 
+SafetyCarCircle_v0 = {
+    'diffusion': {
+        'max_path_length': 500,
+        'renderer': None,
+    },
+    'values': {
+        'max_path_length': 500,
+        'renderer': None,
+        'termination_penalty': 0,
+        'n_train_steps': 1000e3,
+        'learning_rate': 1e-3,
+    },
+    'cost_values': {
+        'max_path_length': 500,
+        'renderer': None,
+        'termination_penalty': 0,
+        'n_train_steps': 1000e3,
+        'learning_rate': 1e-3,
+    },
+    'plan': {
+        'max_episode_length': 500,
+        'discount': 1.0,
+        'test_cost_with_discount': False,
+    }
+}
+
+SafetyAntRun_v0 = {
+    'diffusion': {
+        'max_path_length': 1000,
+        'renderer': None,
+    },
+    'values': {
+        'max_path_length': 1000,
+        'renderer': None,
+        'termination_penalty': 0,
+        'n_train_steps': 1000e3,
+        'learning_rate': 1e-3,
+    },
+    'cost_values': {
+        'max_path_length': 1000,
+        'renderer': None,
+        'termination_penalty': 0,
+        'n_train_steps': 1000e3,
+        'learning_rate': 1e-3,
+    },
+    'plan': {
+        'max_episode_length': 1000,
+        'discount': 1.0,
+        'test_cost_with_discount': False,
+    }
+}
+
+SafetyBallReach_v0 = {
+    'diffusion': {
+        'max_path_length': 250,
+        'renderer': None,
+    },
+    'values': {
+        'max_path_length': 250,
+        'renderer': None,
+        'termination_penalty': 0,
+        'n_train_steps': 1000e3,
+        'learning_rate': 1e-3,
+    },
+    'cost_values': {
+        'max_path_length': 250,
+        'renderer': None,
+        'termination_penalty': 0,
+        'n_train_steps': 1000e3,
+        'learning_rate': 1e-3,
+    },
+    'plan': {
+        'max_episode_length': 250,
+        'discount': 1.0,
+        'test_cost_with_discount': False,
+    }
+}
+
 hopper_medium_expert_v2 = {
     'plan': {
         'scale': 0.0001,

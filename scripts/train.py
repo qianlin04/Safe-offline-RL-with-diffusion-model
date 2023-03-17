@@ -12,7 +12,7 @@ class Parser(utils.Parser):
 args = Parser().parse_args('diffusion')
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 
 #-----------------------------------------------------------------------------#
 #---------------------------------- dataset ----------------------------------#

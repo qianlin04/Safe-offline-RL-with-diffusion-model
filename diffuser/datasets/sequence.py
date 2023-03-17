@@ -171,4 +171,5 @@ class ValueDataset(SequenceDataset):
             value = self.normalize_value(value)
         value = np.array([value], dtype=np.float32)
         value_batch = ValueBatch(*batch, value)
+
         return value_batch

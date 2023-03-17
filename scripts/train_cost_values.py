@@ -13,7 +13,7 @@ class Parser(utils.Parser):
 args = Parser().parse_args('cost_values')
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '3'
 
 #binarization_threshold
 # action = 1.5,    vel = 2.5

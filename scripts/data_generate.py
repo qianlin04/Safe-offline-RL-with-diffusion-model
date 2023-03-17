@@ -1,4 +1,6 @@
 import gym
+import sys
+
 import diffuser.environments
 import numpy as np
 import torch
@@ -7,18 +9,27 @@ import diffuser.utils as utils
 import numpy as np
 import os
 from stable_baselines3 import DQN, SAC
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '3'
 from stable_baselines3.common.callbacks import BaseCallback
 
 
 class CustomCallback(BaseCallback):
     def __init__(self, infos_buffer, verbose=0, ):
         super(CustomCallback, self).__init__(verbose)
+        self.accum_cost = 0
+        self.accum_reward = 0
         self.infos_buffer = infos_buffer
 
     def _on_step(self) -> bool:
         self.infos_buffer.append(self.locals['infos'])
+        self.accum_cost += self.locals['infos'][0]['cost']
+        self.accum_reward += self.locals['rewards']
+        if "TimeLimit.truncated" in self.locals['infos'][0] or self.locals['dones']:
+            print(self.accum_reward, self.accum_cost)
+            self.accum_cost = 0
+            self.accum_reward = 0
         return True
+    
 
 
 #-----------------------------------------------------------------------------#
@@ -37,7 +48,7 @@ class Parser(utils.Parser):
     #config: str = 'config.locomotion'
 
 args = Parser().parse_args()
-env = gym.make(args.dataset, mode='train')
+env = gym.make(args.dataset)
 dataset = {'actions': [], 'observations': [], 'rewards': [], 'terminals': [], 'timeouts': []}
 infos_buffer = []
 collect_infos_callback = CustomCallback(infos_buffer)
@@ -49,8 +60,8 @@ if args.datatype == 'medium-replay':
     # model = DQN("MlpPolicy", env, verbose=0, buffer_size=args.total_step, exploration_initial_eps=1.0, exploration_final_eps=0.1, learning_rate=0.001,
     #             train_freq=1, gradient_steps=1,
     #             exploration_fraction=0.8, batch_size=512, learning_starts=args.total_step//20, target_update_interval=10)
-    model = SAC("MlpPolicy", env, verbose=1, learning_rate=1e-3, buffer_size=args.total_step)
-    model.learn(total_timesteps=args.total_step, log_interval=5, callback=collect_infos_callback)
+    model = SAC("MlpPolicy", env, verbose=1, learning_rate=1e-3, buffer_size=args.total_step, )
+    model.learn(total_timesteps=args.total_step, log_interval=5, callback=collect_infos_callback, )
     model.save(f"./dataset/{args.dataset}.agent")
     dataset['actions'] = model.replay_buffer.actions.squeeze(1)
     dataset['observations'] = model.replay_buffer.observations.squeeze(1)
