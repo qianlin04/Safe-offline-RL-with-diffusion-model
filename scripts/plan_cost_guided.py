@@ -21,11 +21,15 @@ class Parser(utils.Parser):
     n_test_episode: int = 10
     use_wandb: int = True
     gpu_id: str = '0'
+    control_interval: int = 1
+    random_budget: int = 0
 
 args = Parser().parse_args('plan')
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
 print(args.dataset, args.ratio_of_maxthreshold)
+if args.random_budget:
+    args.ratio_of_maxthreshold = 1.0
 if args.cost_threshold is None:
     if args.ratio_of_maxthreshold is None:
         args.cost_threshold = np.inf
@@ -43,6 +47,8 @@ if not args.test_cost_with_discount and args.discount!=1.0:
     else:
         init_cost_threshold = init_cost_threshold * THRESHOLD_RATIO[args.dataset] 
 args.init_cost_threshold = init_cost_threshold
+args.init_init_cost_threshold = init_cost_threshold
+args.init_cost_threshold = args.cost_threshold
 
 def cost_func(*a, **kwargs):
     #kwargs['is_single_step'] = True
@@ -143,7 +149,24 @@ all_total_cost = []
 all_discount_total_cost = []
 
 for n_test_episode in range(args.n_test_episode):
+    
+    if args.random_budget:
+        args.ratio_of_maxthreshold = np.random.uniform(0.1, 1)
+        if args.test_cost_with_discount:
+            args.cost_threshold = MAX_COST_DISCOUNT_THRESHOLD[args.dataset] * args.ratio_of_maxthreshold
+        else:
+            args.cost_threshold = MAX_COST_THRESHOLD[args.dataset] * args.ratio_of_maxthreshold
 
+        init_cost_threshold = args.cost_threshold # 1e6 #82.75 #1.5
+        if not args.test_cost_with_discount and args.discount!=1.0:
+            if args.test_cost_with_fixed_length:
+                init_cost_threshold = init_cost_threshold * (1-args.discount**args.max_episode_length) \
+                    / (1-args.discount) / args.max_episode_length
+            else:
+                init_cost_threshold = init_cost_threshold * THRESHOLD_RATIO[args.dataset] 
+    
+    remain_cost = init_cost_threshold 
+    args.init_cost_threshold = init_cost_threshold
     args.n_test_episode = n_test_episode
     if args.use_wandb:
         wandb.init(
@@ -154,7 +177,6 @@ for n_test_episode in range(args.n_test_episode):
         )
 
     history = []
-    remain_cost = init_cost_threshold 
     n_single_step_break = 0
     total_reward = 0
     total_cost = 0
@@ -168,6 +190,8 @@ for n_test_episode in range(args.n_test_episode):
     ## observations for rendering
     rollout = [observation.copy()]
 
+    import time
+    t_start = time.time()
     for t in range(args.max_episode_length):
 
         if t % 10 == 0: print(args.savepath, flush=True)
@@ -181,8 +205,11 @@ for n_test_episode in range(args.n_test_episode):
             cost_threshold = env.get_budget()
 
         conditions = {0: observation}
-        action, samples = policy(conditions, batch_size=args.batch_size, verbose=args.verbose,
-                                 cost_threshold=cost_threshold, plan_horizon=args.plan_horizon,)
+        if t % args.control_interval == 0:
+            action, samples = policy(conditions, batch_size=args.batch_size, verbose=args.verbose,
+                                    cost_threshold=cost_threshold, plan_horizon=max(args.horizon, args.control_interval),)
+            
+        action = samples.actions[0, t%args.control_interval]
 
         if hasattr(args, 'get_budget_from_env') and args.get_budget_from_env:
             cost_threshold = 0
@@ -239,6 +266,9 @@ for n_test_episode in range(args.n_test_episode):
 
     ## write results to json file at `args.savepath`
     #logger.finish(t, score, total_reward, terminal, diffusion_experiment, value_experiment)
+
+    t_end = time.time()
+    print("episode time is ", (t_end-t_start), (t_end-t_start)/(t+1))
 
     print()
     all_results.append(f't: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | values: {samples.values[0]} | scale: {args.scale} | terminal: {terminal} \n'

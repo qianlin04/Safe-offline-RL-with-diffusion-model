@@ -69,7 +69,7 @@ class SequenceDataset(torch.utils.data.Dataset):
             max_start = min(path_length - 1, self.max_path_length - horizon)
             if not self.use_padding:
                 max_start = min(max_start, path_length - horizon)
-            for start in range(max_start+1):   #dolts4444
+            for start in range(max_start+1):   
                 end = start + horizon 
                 indices.append((i, start, end))
         indices = np.array(indices)

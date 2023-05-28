@@ -132,7 +132,7 @@ class GaussianNormalizer(Normalizer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.means = self.X.mean(axis=0)
-        self.stds = self.X.std(axis=0).clip(1e-8)  #dolts4444
+        self.stds = self.X.std(axis=0).clip(1e-8)  
         self.z = 1
 
     def __repr__(self):

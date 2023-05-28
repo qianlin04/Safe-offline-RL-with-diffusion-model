@@ -114,7 +114,7 @@ class TemporalConvNet(nn.Module):
         num_channels = [*map(lambda m: dim * m, dim_mults)]
         num_levels = len(num_channels)
         for i in range(num_levels):
-            dilation_size = 2 ** (i//2) #dolts
+            dilation_size = 2 ** (i//2) 
             in_channels = transition_dim if i == 0 else num_channels[i-1]
             out_channels = num_channels[i]
             self.layers.append(TemporalBlock(in_channels, out_channels, kernel_size, stride=1, dilation=dilation_size,

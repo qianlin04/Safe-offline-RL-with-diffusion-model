@@ -77,7 +77,7 @@ class GuidedPolicy:
         conditions = utils.apply_dict(
             einops.repeat,
             conditions,
-            'd -> repeat d' if len(conditions[0].shape)==1 else 'd w -> (repeat d) w',   #dolts4444 
+            'd -> repeat d' if len(conditions[0].shape)==1 else 'd w -> (repeat d) w',  
             repeat=batch_size,
         )
         return conditions

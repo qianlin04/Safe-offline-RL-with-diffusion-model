@@ -17,7 +17,7 @@ MAX_COST_THRESHOLD = {
 
     'SafetyCarCircle-v0': 150,
     'SafetyAntRun-v0': 20,
-    'SafetyBallReach-v0': 100,
+    'SafetyBallReach-v0': 35,
 }
 
 MAX_COST_DISCOUNT_THRESHOLD = {
