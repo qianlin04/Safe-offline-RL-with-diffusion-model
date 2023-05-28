@@ -146,3 +146,19 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+requirements.txt
+azure/
+.vscode/
+slurm/
+two_step_mdp_experiment/
+.dockerignore
+.gitattributes
+.gitignore
+Dockerfile
+LICENSE
+plot.ipynb
+quetzal.yaml
+requirements.txt
+Singularity.def
+test.ipynb

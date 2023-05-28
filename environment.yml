@@ -32,4 +32,5 @@ dependencies:
     - google-api-python-client
     - cryptography
     #- git+https://github.com/JannerM/doodad.git@janner
+    - git+https://github.com/SvenGronauer/Bullet-Safety-Gym.git
     - gdown
