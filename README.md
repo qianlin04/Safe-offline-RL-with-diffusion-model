@@ -1,6 +1,6 @@
 # Safe Offline Reinforcement Learning with Real-Time Budget Constraints
 
-This is the Trajectory-based REal-time Budget Inference (TREBI) implementation from [Safe Offline Reinforcement Learning with Real-Time Budget]([https://github.com/jannerm/diffuser](https://arxiv.org/abs/2306.00603)). This implementation is mainly based the Janner's [diffuser](https://github.com/jannerm/diffuser).
+This is the Trajectory-based REal-time Budget Inference (TREBI) implementation from [Safe Offline Reinforcement Learning with Real-Time Budget](https://arxiv.org/abs/2306.00603). This implementation is mainly based the Janner's [diffuser](https://github.com/jannerm/diffuser).
 
 
 ## Installation
